@@ -43,12 +43,17 @@ scalaSource in Compile := (baseDirectory(_/sourceDir)).value
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
 val defaultVersions = Map(
   "chisel3" -> "3.2.+",
-  "chisel-iotesters" -> "1.3.+"
+  "chisel-iotesters" -> "1.3.+",
   )
 
 libraryDependencies ++= Seq("chisel3","chisel-iotesters").map {
-  dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) }
-
+  dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep))}
+// libraryDependencies ++= Seq(
+//       "edu.berkeley.cs" %% "chisel3" % "3.4.3",
+//       //"edu.berkeley.cs" %% "chiseltest" % "0.3.3" % "test",
+//       "edu.berkeley.cs" %% "chisel-iotesters" % "1.5.3"
+//     )
+  
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 
 javacOptions ++= javacOptionsVersion(scalaVersion.value)
