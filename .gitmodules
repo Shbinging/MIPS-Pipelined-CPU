@@ -1,0 +1,9 @@
+[submodule "nemu-mips32"]
+	path = nemu-mips32
+	url = git@github.com:nju-mips/nemu-mips32
+[submodule "nexus-am"]
+	path = nexus-am
+	url = git@github.com:nju-mips/nexus-am
+[submodule "mipstest"]
+	path = mipstest
+	url = git@github.com:nju-mips/mipstest
