@@ -6,6 +6,8 @@
 /.metals
 /.bloop
 /.vscode
+/core/.metals
+/core/.vscode
 *.str
 *.log
 *.jou
