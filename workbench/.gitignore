@@ -3,6 +3,9 @@
 /build/
 /project/
 /serial
+/.metals
+/.bloop
+/.vscode
 *.str
 *.log
 *.jou
