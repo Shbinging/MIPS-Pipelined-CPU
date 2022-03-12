@@ -1,0 +1,11 @@
+.PHONY: nemu
+
+MIPS32_NEMU      := $(MIPS32_NEMU_HOME)/build/nemu
+MIPS32_NEMU_LIB  := $(MIPS32_NEMU_HOME)/build/nemu.so
+MIPS32_NEMU_DEPS != find $(MIPS32_NEMU_HOME) -name "*.c" -or -name "*.h"
+MIPS32_NEMU_DEPS += $(MIPS32_NEMU_HOME)/.config
+MIPS32_NEMU_DEPS += $(MIPS32_NEMU_HOME)/Makefile
+
+nemu: $(MIPS32_NEMU) $(MIPS32_NEMU_LIB)
+$(MIPS32_NEMU) $(MIPS32_NEMU_LIB): $(MIPS32_NEMU_DEPS)
+	@make -s -C $(MIPS32_NEMU_HOME) ARCH=mips32-npc

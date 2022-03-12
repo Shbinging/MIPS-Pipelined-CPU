@@ -1,0 +1,10 @@
+/target/
+/output/
+/build/
+/project/
+/serial
+*.str
+*.log
+*.jou
+*.out
+sync
