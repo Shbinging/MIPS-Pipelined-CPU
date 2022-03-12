@@ -97,6 +97,14 @@ trait CacheConsts {
 
 trait InstrConsts {
   val REG_SZ    = 5;
+  val IMM_SZ    = 16;
+}
+
+trait ExecUnitIndices {
+  val EX_ID_WIDTH = 2
+  val ALU         = 0.U(EX_ID_WIDTH.W)
+
+  val OPCODE_WIDTH = 4
 }
 
 trait InstrPattern {
