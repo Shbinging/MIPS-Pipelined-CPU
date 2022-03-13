@@ -14,9 +14,9 @@ class ExampleTest(dut: tryy) extends PeekPokeTester(dut) {
   print(peek(dut.io.bb.rs_addr))
 }
 
-object ExampleTestMain{
-  def main(args: Array[String]): Unit = {
-    chisel3.iotesters.Driver.execute(args, ()=>new tryy) { c => new ExampleTest(c)}
-  }
+// object ExampleTestMain{
+//   def main(args: Array[String]): Unit = {
+//     chisel3.iotesters.Driver.execute(args, ()=>new tryy) { c => new ExampleTest(c)}
+//   }
   
-}
+// }

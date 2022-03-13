@@ -1,4 +1,4 @@
-SCALA_DIR   := core/ori
+SCALA_DIR   := core/src
 SCALA_FILES != find $(SCALA_DIR) -name "*.scala"
 
 CORE_OBJ_DIR := $(OBJ_DIR)/$(UNCORE)

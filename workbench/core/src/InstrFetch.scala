@@ -29,7 +29,7 @@ class InstrFetch extends Module{
     // }
 
     dev.io.clock := clock
-    dev.io.reset := reset
+    dev.io.reset := reset.asBool()
     
     dev.io.in.req.bits.is_cached := DontCare
     dev.io.in.req.bits.strb := DontCare

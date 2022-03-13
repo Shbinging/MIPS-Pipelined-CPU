@@ -7,7 +7,7 @@ import njumips.consts._
 import src.RegEnableUse
 class ISU extends Module {
     val io = IO(new Bundle{
-        val gpr_data = new GPRReadOutput //input
+        val gpr_data = Flipped(new GPRReadOutput) //input
         val id_isu = Flipped(new ID_ISU) //input
         
         val isu_alu = new ISU_ALU //output
@@ -22,6 +22,7 @@ class ISU extends Module {
         switch(reg_id_isu.exu){
             is(ALU_ID){//alu TODO:: one clock to handshake
                 val iaBundle = Wire(new ISU_ALU)
+                iaBundle := DontCare
                 iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_id_isu.shamt, io.gpr_data.rs_data)
                 iaBundle.isu_commit_to_alu := true.B
                 iaBundle.alu_op := reg_id_isu.exu

@@ -26,15 +26,14 @@ class GPR extends Module {
         val read_in = new GPRReadIntput
         val write_in = new GPRWriteInput
         val read_out = new GPRReadOutput
+        val gpr_commit = Output(Vec(32, UInt(32.W)))
     })
     // TODO: support variable lengths configs
-    val gprs = RegInit(VecInit(Seq.fill(4)(0.U(8.W))))
+    val gprs = RegInit(VecInit(Seq.fill(32){VecInit(Seq.fill(4){0.U(8.W)})}))
 
-    val rs_gpr = gprs(io.read_in.rs_addr)
-    val rt_gpr = gprs(io.read_in.rt_addr)
 
-    io.read_out.rs_data := Cat(Cat(rs_gpr(3), rs_gpr(2)), Cat(rs_gpr(1), rs_gpr(0)))
-    io.read_out.rt_data := Cat(Cat(rt_gpr(3), rt_gpr(2)), Cat(rt_gpr(1), rt_gpr(0)))
+    io.read_out.rs_data := gprs(io.read_in.rs_addr).asUInt()
+    io.read_out.rt_data := gprs(io.read_in.rt_addr).asUInt()
    
     when(io.write_in.w_en.asUInt() =/= 0.U & io.write_in.addr =/= 0.U){
         when(io.write_in.w_en(0)){
@@ -51,4 +50,7 @@ class GPR extends Module {
         }
     }
 
+    for( i <- 0 to 31){
+        io.gpr_commit(i) := gprs(i).asUInt()
+    }
 }
