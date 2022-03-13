@@ -37,7 +37,7 @@ class InstrFetch extends Module{
     dev.io.in.req.bits.func := MX_RD
 
     when(io.en){
-        dev.io.in.req.bits.is_aligned := true.B 
+        // dev.io.in.req.bits.is_aligned := true.B 
         dev.io.in.req.bits.addr := io.pc
         dev.io.in.req.bits.len := 4.U 
         dev.io.in.req.valid := true.B
