@@ -98,13 +98,30 @@ trait CacheConsts {
 trait InstrConsts {
   val REG_SZ    = 5;
   val IMM_SZ    = 16;
+  val SHAMT_SZ  = 5;
 }
 
 trait ExecUnitIndices {
   val EX_ID_WIDTH = 2
-  val ALU         = 0.U(EX_ID_WIDTH.W)
+  val ALU_ID      = 0.U(EX_ID_WIDTH.W)
+
 
   val OPCODE_WIDTH = 4
+  val ALU_ADDU_OP = "b0000".U(OPCODE_WIDTH.W)
+  val ALU_SUBU_OP = "b0001".U(OPCODE_WIDTH.W)
+  val ALU_X_OP = "b0010".U(OPCODE_WIDTH.W)
+  val ALU_X2_OP = "b0011".U(OPCODE_WIDTH.W)
+  val ALU_AND_OP = "b0100".U(OPCODE_WIDTH.W)
+  val ALU_SLT_OP = "b0101".U(OPCODE_WIDTH.W)
+  val ALU_OR_OP = "b0110".U(OPCODE_WIDTH.W)
+  val ALU_SLTU_OP = "b0111".U(OPCODE_WIDTH.W)
+  val ALU_SLL_OP = "b1000".U(OPCODE_WIDTH.W)
+  val ALU_XOR_OP = "b1001".U(OPCODE_WIDTH.W)
+  val ALU_SRL_OP = "b1010".U(OPCODE_WIDTH.W)
+  val ALU_SRA_OP = "b1011".U(OPCODE_WIDTH.W)
+  val ALU_ADD_OP = "b1110".U(OPCODE_WIDTH.W)
+  val ALU_SUB_OP = "b1111".U(OPCODE_WIDTH.W)
+
 }
 
 trait InstrPattern {

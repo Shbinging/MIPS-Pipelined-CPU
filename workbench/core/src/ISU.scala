@@ -20,9 +20,9 @@ class ISU extends Module {
     
     when(reg_id_isu.id_commit){
         switch(reg_id_isu.exu){
-            is(0.U){//alu TODO:: one clock to handshake
+            is(ALU_ID){//alu TODO:: one clock to handshake
                 val iaBundle = Wire(new ISU_ALU)
-                iaBundle.operand_1 := io.gpr_data.rs_data
+                iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_id_isu.shamt, io.gpr_data.rs_data)
                 iaBundle.isu_commit_to_alu := true.B
                 iaBundle.alu_op := reg_id_isu.exu
                 iaBundle.rd_addr := reg_id_isu.rd_addr

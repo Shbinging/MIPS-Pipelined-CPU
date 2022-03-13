@@ -37,6 +37,10 @@ class ID_ISU extends Bundle{
     val id_commit = Output(Bool())
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
+    
+    val shamt_rs_sel = Output(Bool())
+    val shamt = Output(UInt(SHAMT_SZ.W))
+    
     val sign_ext = Output(Bool())
     val exu = Output(UInt(EX_ID_WIDTH.W))
     val op = Output(UInt(OPCODE_WIDTH.W))

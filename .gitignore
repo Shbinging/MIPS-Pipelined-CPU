@@ -6,7 +6,7 @@
 **/.bloop
 **/.vscode
 **/test_run_dir/
-**/.metals
+**/.metals/
 **/.bsp
 **/.idea
 *.str
