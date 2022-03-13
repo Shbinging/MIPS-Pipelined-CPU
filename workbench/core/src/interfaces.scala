@@ -41,8 +41,6 @@ class ID_ISU extends Bundle{
     val exu = Output(UInt(EX_ID_WIDTH.W))
     val op = Output(UInt(OPCODE_WIDTH.W))
     val imm_rt_sel = Output(Bool())
-    val rs_addr = Input(UInt(REG_SZ.W))
-    val rt_addr = Input(UInt(REG_SZ.W))
 }
 
 // ISU_ALU

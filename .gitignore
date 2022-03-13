@@ -6,6 +6,9 @@
 **/.bloop
 **/.vscode
 **/test_run_dir/
+**/.metals
+**/.bsp
+**/.idea
 *.str
 *.log
 *.jou
