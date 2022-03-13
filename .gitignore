@@ -6,10 +6,16 @@
 **/.bloop
 **/.vscode
 **/test_run_dir/
+<<<<<<< HEAD
 **/.idea
 **/.metals
 **/.bloop
 **/.bsp
+=======
+**/.metals
+**/.bsp
+**/.idea
+>>>>>>> IF_ID
 *.str
 *.log
 *.jou

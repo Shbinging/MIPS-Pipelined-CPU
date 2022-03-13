@@ -49,7 +49,7 @@ object TopMain extends App {
     val top = args(0)
     val chiselArgs = args.slice(1, args.length)
     chisel3.Driver.execute(chiselArgs, () => {
-      val clazz = Class.forName("njumips.core."+top)
+      val clazz = Class.forName("njumips."+top)
       val constructor = clazz.getConstructor()
       constructor.newInstance().asInstanceOf[Module]
     })

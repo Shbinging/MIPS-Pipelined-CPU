@@ -19,14 +19,14 @@ class InstrFetch extends Module{
 
     val dev = Module(new SimDev)
 
-    val pc_writer_reg = new Bundle{
-        val w_en = Input(io.en)
-        val w_data = RegEnable(io.pc+4.U, io.en)
-    }
-    val if_id_reg = new Bundle{
-        val if_commit = RegNext(io.en)
-        val instr = RegEnable(dev.io.in.resp.bits.data, io.en)
-    }
+    // val pc_writer_reg = new Bundle{
+    //     val w_en = RegNext(io.en)
+    //     val w_data = RegEnable(io.pc+4.U, io.en)
+    // }
+    // val if_id_reg = new Bundle{
+    //     val if_commit = RegNext(io.en)
+    //     val instr = RegEnable(dev.io.in.resp.bits.data, io.en)
+    // }
 
     dev.io.clock := clock
     dev.io.reset := reset
@@ -45,6 +45,9 @@ class InstrFetch extends Module{
         dev.io <> DontCare
     }
 
-    io.pc_writer <> pc_writer_reg
-    io.if_id <> if_id_reg
+    io.pc_writer.w_en := io.en
+    io.pc_writer.w_data := io.pc+4.U
+    
+    io.if_id.if_commit := io.en 
+    io.if_id.instr := dev.io.in.resp.bits.data
 }
