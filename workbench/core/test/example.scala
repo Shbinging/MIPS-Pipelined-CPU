@@ -6,16 +6,17 @@ import chisel3.iotesters._
 import org.scalatest.FreeSpec
 import chisel3.experimental.BundleLiterals._
 import chisel3.iotesters.PeekPokeTester
+import src.tryy
 
-class ExampleTest(dut: Example) extends PeekPokeTester(dut) {
-  poke(dut.io.in, 0.U)
+class ExampleTest(dut: tryy) extends PeekPokeTester(dut) {
+  poke(dut.io.aa.rs_addr, 3.U)
   step(1)
-  expect(dut.io.out, 0.U)
+  print(peek(dut.io.bb.rs_addr))
 }
 
 object ExampleTestMain{
   def main(args: Array[String]): Unit = {
-    chisel3.iotesters.Driver.execute(args, ()=>new Example) { c => new ExampleTest(c)}
+    chisel3.iotesters.Driver.execute(args, ()=>new tryy) { c => new ExampleTest(c)}
   }
   
 }

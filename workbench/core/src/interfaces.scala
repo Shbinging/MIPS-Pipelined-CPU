@@ -40,6 +40,9 @@ class ID_ISU extends Bundle{
     val sign_ext = Output(Bool())
     val exu = Output(UInt(EX_ID_WIDTH.W))
     val op = Output(UInt(OPCODE_WIDTH.W))
+    val imm_rt_sel = Output(Bool())
+    val rs_addr = Input(UInt(REG_SZ.W))
+    val rt_addr = Input(UInt(REG_SZ.W))
 }
 
 // ISU_ALU
@@ -60,7 +63,7 @@ class EXEC_WB extends Bundle{
 
 class ALUOutput extends Bundle{
     // TODO:
-    val exec_wb = Output(new ExecCommit)
+    //val exec_wb = Output(new ExecCommit)
 }
 
 // read, write memory

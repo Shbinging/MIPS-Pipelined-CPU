@@ -3,7 +3,6 @@ package njumips
 import chisel3._
 import chisel3.util._
 import njumips.configs._
-import njumips.utils._
 import njumips.consts._
 import njumips.configs._
 

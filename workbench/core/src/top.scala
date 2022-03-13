@@ -33,7 +33,7 @@ class verilator_top extends Module {
   instr_fetch.io.if_id <> instr_decode.io.in
   instr_decode.io.out_gpr_read <> gprs.io.read_in
   
-  instr_shoot.io.id_isu <> instr_decode.io.id_isu
+  //instr_shoot.io.id_isu <> instr_decode.io.id_isu
   instr_shoot.io.gpr_data <> gprs.io.read_out
   
   alu.io.isu_alu <> instr_shoot.io.isu_alu

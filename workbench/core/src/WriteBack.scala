@@ -12,12 +12,12 @@ class WriteBack extends Module{
         val gpr_wr = Flipped(new GPRWriteInput)
         val cycle_done = Output(Bool())
     })
-    val cycle_done_reg = RegNext(reset.asBool | io.alu_output.exec_wb.)
+   
     // TODO:
 
     io.pc_wr <> DontCare
     
-    when(reset){
-        cycle_done := true.B
-    }
+    // when(reset){
+    //     cycle_done := true.B
+    // }
 }

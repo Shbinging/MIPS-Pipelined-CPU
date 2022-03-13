@@ -37,7 +37,7 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases")
 )
 
-val sourceDir = "core/";
+val sourceDir = "core/src";
 scalaSource in Compile := (baseDirectory(_/sourceDir)).value
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.

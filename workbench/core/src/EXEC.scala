@@ -12,4 +12,5 @@ class ALU extends Module{
     })
 
     // TODO: 
+    //when(io.isu_commit_to_alu)
 }
