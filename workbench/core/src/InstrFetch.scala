@@ -1,4 +1,8 @@
 package njumips
+import chisel3._
+import chisel3.util._
+import njumips.configs._
+import njumips.consts._
 
 class IF_ID_Reg extends Bundle{
     val id_en = Output(Bool())
@@ -8,7 +12,7 @@ class IF_ID_Reg extends Bundle{
 class InstrFetch extends Module{
     val io = IO(new Bundle{
         val en = Input(Bool())
-        val pc = Input(conf.addr_width.W)
+        val pc = Input(UInt(conf.addr_width.W))
         val pc_writer = Flipped(new PCInput)
         val if_id = new IF_ID
     })
@@ -30,17 +34,17 @@ class InstrFetch extends Module{
     dev.io.in.req.bits.is_cached := DontCare
     dev.io.in.req.bits.strb := DontCare
     dev.io.in.req.bits.data := DontCare
-    dev.io.in.req.func := MX_RD
+    dev.io.in.req.bits.func := MX_RD
 
     when(io.en){
         dev.io.in.req.bits.is_aligned := true.B 
-        dev.io.in.req.bits.addr := io.pc_io.pc
+        dev.io.in.req.bits.addr := io.pc
         dev.io.in.req.bits.len := 4.U 
         dev.io.in.req.valid := true.B
     } .otherwise{
         dev.io <> DontCare
     }
 
-    io.pc_writer <> pc_writer
+    io.pc_writer <> pc_writer_reg
     io.if_id <> if_id_reg
 }

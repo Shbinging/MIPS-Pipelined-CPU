@@ -173,6 +173,7 @@ object consts extends InstrPattern
   with CP0Consts
   with InstrConsts
   with CacheConsts
+  with ExecUnitIndices
 {
   val Y = true.B
   val N = false.B

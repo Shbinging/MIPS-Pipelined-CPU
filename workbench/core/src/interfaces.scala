@@ -8,7 +8,7 @@ import njumips.consts._
 // PC
 class PCInput extends Bundle{
     val w_en = Input(Bool())
-    val w_data = Input(conf.addr_width.W)
+    val w_data = Input(UInt(conf.addr_width.W))
 }
 
 // GPR
@@ -21,7 +21,7 @@ class GPRReadOutput extends Bundle{
     val rt_data = Output(UInt(conf.data_width.W))
 }
 class GPRWriteInput extends Bundle{
-    val w_en = Input(UInt((conf.data_width / 8).W)
+    val w_en = Input(UInt((conf.data_width / 8).W))
     val addr = Input(UInt(REG_SZ.W))
     val data = Input(UInt(conf.data_width.W))
 }
@@ -60,7 +60,7 @@ class EXEC_WB extends Bundle{
 
 class ALUOutput extends Bundle{
     // TODO:
-    val exec_wb = new ExecCommit
+    val exec_wb = Output(new ExecCommit)
 }
 
 // read, write memory

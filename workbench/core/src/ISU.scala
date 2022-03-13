@@ -11,5 +11,7 @@ class ISU extends Module {
         val id_isu = Flipped(new ID_ISU)
         val isu_alu = new ISU_ALU
     })
-    // TODO:
+    when(io.id_isu.id_commit){
+        
+    }
 }
