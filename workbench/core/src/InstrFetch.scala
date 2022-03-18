@@ -13,7 +13,7 @@ class InstrFetch extends Module{
     })
     io.wb_if.ready := true.B    // unidir hand shaking
 
-    val pc_reg = RegInit(conf.start_addr.U)
+    val pc_reg = RegInit(conf.start_addr)
     io.pc := pc_reg
 
     when(io.wb_if.fire() && io.wb_if.bits.pc_w_en){

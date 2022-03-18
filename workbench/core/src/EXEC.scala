@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
-import src.RegEnableUse
 
 class adder extends Module{
     val io = IO(
@@ -200,8 +199,8 @@ class ALU extends Module{
     io.out.Overflow_out := Overflow_out.asBool()
     io.out.Zero := Zero.asBool() //alu
     
-    io.exec_wb.bits.w_addr := io.isu_alu.rd_addr
+    io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
     io.exec_wb.bits.w_en := true.B
     io.exec_wb.bits.exu_id := ALU_ID
-    io.exec_wb.valid := isu_alu_fire.B  // 1 cycle 
+    io.exec_wb.valid := isu_alu_fire  // 1 cycle 
 }

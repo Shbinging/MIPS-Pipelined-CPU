@@ -8,3 +8,10 @@ object RegEnableIO{
         r
   }
 }
+object RegEnableUse{
+    def apply[T <: Data](next: T, enable: Bool): T = {
+        val r = Reg(Output(chiselTypeOf(next)))
+        when (enable) { r := next }
+        r
+  }
+}

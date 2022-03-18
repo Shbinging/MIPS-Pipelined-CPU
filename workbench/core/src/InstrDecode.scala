@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
-import src.RegEnableUse
 
 class InstrDecode extends Module{
     val io = IO(new Bundle{
@@ -12,7 +11,7 @@ class InstrDecode extends Module{
         val out_gpr_read = Flipped(new GPRReadIntput)
         val id_isu = Decoupled(new ID_ISU)
     })
-    io.in.ready := true.B   // unidir handshake 
+    io.if_id.ready := true.B   // unidir handshake 
     val if_id_fire = RegNext(io.if_id.fire())
     val if_id_reg = RegEnableUse(io.if_id.bits, io.if_id.fire())
 
@@ -35,13 +34,12 @@ class InstrDecode extends Module{
         val imm_rt_sel = Output(Bool())
     */
     io.id_isu <> DontCare  
-    io.id_isu.bits.id_commit := if_id_reg.if_commit
-    io.id_isu.bits.imm := io.in.instr(15, 0)
-    io.id_isu.bits.shamt := io.in.instr(10, 6)
+    io.id_isu.bits.imm := if_id_reg.instr(15, 0)
+    io.id_isu.bits.shamt := if_id_reg.instr(10, 6)
     
     // TODO: decode instructions
     
 
-    io.id_isu.valid := if_id_fire()    // complete in 1 cycle
-    io.out_gpr_read := if_id_reg.bits.instr(25, 16).asTypeOf(new GPRReadIntput)
+    io.id_isu.valid := if_id_fire    // complete in 1 cycle
+    io.out_gpr_read := if_id_reg.instr(25, 16).asTypeOf(new GPRReadIntput)
 }
