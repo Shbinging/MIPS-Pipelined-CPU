@@ -113,8 +113,11 @@ class AluPart extends Module{
     io.ALU_out := 0.U
     switch(ALU_ctr.asUInt()){
         is(0.U){
-            val vecc = VecInit((io.A_in ^ Fill(32, io.ALU_op(0))).asBools())
-            io.ALU_out := 31.U - vecc.lastIndexWhere((c:Bool)=> c)
+            when (io.ALU_op(0).asBool()){
+                io.ALU_out := io.B_in << 16;
+            }.otherwise{
+                io.ALU_out := ~(io.A_in | io.B_in)
+            }
             //io.ALU_out:= 0.U
         }
         is(1.U){
