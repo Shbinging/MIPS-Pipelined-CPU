@@ -8,13 +8,7 @@ import njumips.consts._
 import njumips.GPRReadIntput
 import njumips.GPRReadOutput
 import scala.runtime.BoxedUnit
-object RegEnableUse{
-    def apply[T <: Data](next: T, enable: Bool): T = {
-        val r = Reg(Output(chiselTypeOf(next)))
-        when (enable) { r := next }
-        r
-  }
-}
+
 class tryy extends Module{
     val io = IO(new Bundle{
         val aa = new GPRReadIntput

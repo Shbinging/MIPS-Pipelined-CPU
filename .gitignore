@@ -6,11 +6,7 @@
 **/.bloop
 **/.vscode
 **/test_run_dir/
-<<<<<<< HEAD
-workbench/.metals
-=======
 **/.metals/
->>>>>>> IF_ID
 **/.bsp
 **/.idea
 *.str
