@@ -22,7 +22,11 @@ class ISU extends Module {
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
             iaBundle := DontCare
-            iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_id_isu.shamt, io.gpr_data.rs_data)
+            when(io.id_isu.bits.isShift){
+                iaBundle.operand_1 := io.id_isu.bits.imm(10, 6).asUInt() | io.gpr_data.rs_data
+            }.otherwise{
+                iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_id_isu.shamt, io.gpr_data.rs_data)
+            }
             iaBundle.alu_op := reg_id_isu.op
             iaBundle.rd_addr := reg_id_isu.rd_addr
             io.isu_alu.valid := id_isu_fire     // XXX: 
