@@ -22,3 +22,18 @@ class TryyyTest(dut: tryyy) extends PeekPokeTester(dut) {
 //   }
   
 // }
+
+class decoupleTest(c: DecoupleTop) extends PeekPokeTester(c) {
+  poke(c.io.in, 10.U)
+  step(1)
+  expect(c.io.out, 10.U)
+  poke(c.io.in, 5.U)
+  step(1)
+  expect(c.io.out, 0.U)
+}
+
+object TryDecoupledTest{
+  def main(args: Array[String]): Unit = {
+    chisel3.iotesters.Driver.execute(args, ()=>new DecoupleTop) {c => new decoupleTest(c)}
+  }
+}

@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
-import src.RegEnableUse
 
 class adder extends Module{
     val io = IO(
@@ -147,12 +146,13 @@ class AluPart extends Module{
 
 class ALU extends Module{
     val io = IO{new Bundle{
-        val isu_alu = Flipped(new ISU_ALU)
+        val isu_alu = Flipped(Decoupled(new ISU_ALU))
         val out = new ALUOutput
-        val exec_wb = new EXEC_WB
+        val exec_wb = Decoupled(new EXEC_WB)
     }}
     
-    val r = RegEnableUse(io.isu_alu, io.isu_alu.isu_commit_to_alu)
+    val isu_alu_fire = RegNext(io.isu_alu.fire())
+    val r = RegEnableUse(io.isu_alu.bits, io.isu_alu.fire())
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
     val ALU_op = WireInit(r.alu_op)
@@ -161,8 +161,9 @@ class ALU extends Module{
     val Overflow_out = Wire(UInt(1.W))
     val Zero = Wire(UInt(1.W))
 
-     val alu = Module(new AluPart)
-     val shift = Module(new barrelShifter)
+    val alu = Module(new AluPart)
+    val shift = Module(new barrelShifter)
+    
     shift.io.shift_amount := A_in(4, 0)
     shift.io.shift_in := B_in
     shift.io.shift_op := DontCare
@@ -193,15 +194,13 @@ class ALU extends Module{
     }
     io.out := DontCare
     io.exec_wb := DontCare
-    when(r.isu_commit_to_alu){
-        io.out.ALU_out := ALU_out
-        io.out.Less := Less.asBool()
-        io.out.Overflow_out := Overflow_out.asBool()
-        io.out.Zero := Zero.asBool() //alu
-        io.exec_wb.exec_commit := true.B
-        io.exec_wb.w_addr := io.isu_alu.rd_addr
-        io.exec_wb.w_en := true.B
-    }.otherwise{
-        io.exec_wb.w_en := false.B
-    }
+    io.out.ALU_out := ALU_out
+    io.out.Less := Less.asBool()
+    io.out.Overflow_out := Overflow_out.asBool()
+    io.out.Zero := Zero.asBool() //alu
+    
+    io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
+    io.exec_wb.bits.w_en := true.B
+    io.exec_wb.bits.exu_id := ALU_ID
+    io.exec_wb.valid := isu_alu_fire  // 1 cycle 
 }

@@ -5,21 +5,20 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 import njumips.configs._
-import src.RegEnableUse
 
-class ProgramCounter extends Module {
-    val io = IO(new Bundle{
-        val in = new PCInput
-        val out = Output(UInt(conf.addr_width.W))
-    })
-    val pc = RegEnable(io.in.w_data, io.in.w_en)
+// class ProgramCounter extends Module {
+//     val io = IO(new Bundle{
+//         val in = new PCInput
+//         val out = Output(UInt(conf.addr_width.W))
+//     })
+//     val pc = RegEnable(io.in.w_data, io.in.w_en)
 
-    withReset(reset.asBool()){
-        pc := conf.start_addr.asUInt()
-    }
+//     withReset(reset.asBool()){
+//         pc := conf.start_addr.asUInt()
+//     }
 
-    io.out := pc 
-}
+//     io.out := pc 
+// }
 
 class GPR extends Module {
     val io = IO(new Bundle{

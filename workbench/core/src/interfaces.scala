@@ -5,11 +5,11 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 
-// PC
-class PCInput extends Bundle{
-    val w_en = Input(Bool())
-    val w_data = Input(UInt(conf.addr_width.W))
-}
+// // PC
+// class PCInput extends Bundle{
+//     val w_en = Input(Bool())
+//     val w_data = Input(UInt(conf.addr_width.W))
+// }
 
 // GPR
 class GPRReadIntput extends Bundle{
@@ -26,15 +26,22 @@ class GPRWriteInput extends Bundle{
     val data = Input(UInt(conf.data_width.W))
 }
 
+// WB_IF 
+class RB_IF extends Bundle{
+  val pc_w_en = Output(Bool())
+  val pc_w_data = Output(UInt(conf.addr_width.W))
+}
+
+
 // IF_ID
 class IF_ID extends Bundle{
-    val if_commit = Output(Bool())
+    // val if_commit = Output(Bool())
     val instr = Output(UInt(conf.data_width.W))
 }
 
 // ID_RF, RF_ISU, ID_ISU
 class ID_ISU extends Bundle{
-    val id_commit = Output(Bool())
+    // val id_commit = Output(Bool())
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
     
@@ -49,7 +56,7 @@ class ID_ISU extends Bundle{
 
 // ISU_ALU
 class ISU_ALU extends Bundle{
-    val isu_commit_to_alu = Output(Bool())
+    // val isu_commit_to_alu = Output(Bool())
     val alu_op = Output(UInt(OPCODE_WIDTH.W))
     val operand_1 = Output(UInt(conf.data_width.W))
     val operand_2 = Output(UInt(conf.data_width.W))
@@ -58,9 +65,9 @@ class ISU_ALU extends Bundle{
 
 // EXEC
 class EXEC_WB extends Bundle{
-    val exec_commit = Output(Bool())
     val w_en = Output(Bool())
     val w_addr = Output(UInt(REG_SZ.W))
+    val exu_id = Output(UInt(EX_ID_WIDTH.W))
 }
 
 class ALUOutput extends Bundle{
