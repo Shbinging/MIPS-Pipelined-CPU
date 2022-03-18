@@ -47,7 +47,7 @@ class ID_ISU extends Bundle{
     
     val shamt_rs_sel = Output(Bool())
     val shamt = Output(UInt(SHAMT_SZ.W))
-    val isShift = Output(Bool())
+    
     val sign_ext = Output(Bool())
     val exu = Output(UInt(EX_ID_WIDTH.W))
     val op = Output(UInt(OPCODE_WIDTH.W))
