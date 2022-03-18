@@ -32,8 +32,8 @@ class decoupleTest(c: DecoupleTop) extends PeekPokeTester(c) {
   expect(c.io.out, 0.U)
 }
 
-object TryDecoupledTest{
-  def main(args: Array[String]): Unit = {
-    chisel3.iotesters.Driver.execute(args, ()=>new DecoupleTop) {c => new decoupleTest(c)}
-  }
-}
+// object TryDecoupledTest{
+//   def main(args: Array[String]): Unit = {
+//     chisel3.iotesters.Driver.execute(args, ()=>new DecoupleTop) {c => new decoupleTest(c)}
+//   }
+// }

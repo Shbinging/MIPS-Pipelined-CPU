@@ -12,7 +12,7 @@ class WriteBack extends Module{
         val wb_if = Decoupled(new RB_IF)    // XXX: ignore temporarily
         val gpr_wr = Flipped(new GPRWriteInput)
     })
-   
+    io.exec_wb.ready := true.B
     val exec_wb_fire = RegNext(io.exec_wb.fire())
     val reg_alu_output = RegEnableUse(io.alu_output, io.exec_wb.fire() && (io.exec_wb.bits.exu_id===ALU_ID))
     val reg_exec_wb = RegEnableUse(io.exec_wb.bits, io.exec_wb.fire())

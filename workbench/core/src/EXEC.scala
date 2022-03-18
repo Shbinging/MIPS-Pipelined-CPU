@@ -150,7 +150,7 @@ class ALU extends Module{
         val out = new ALUOutput
         val exec_wb = Decoupled(new EXEC_WB)
     }}
-    
+    io.isu_alu.ready := true.B
     val isu_alu_fire = RegNext(io.isu_alu.fire())
     val r = RegEnableUse(io.isu_alu.bits, io.isu_alu.fire())
     val A_in = WireInit(r.operand_1)
