@@ -6,4 +6,4 @@
 	url = git@github.com:nju-mips/nexus-am
 [submodule "mipstest"]
 	path = mipstest
-	url = git@github.com:nju-mips/mipstest
+	url = git@github.com:Shbinging/mipstest.git
