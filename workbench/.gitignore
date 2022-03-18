@@ -1,0 +1,7 @@
+\.metals
+.bloop
+.vscode
+output
+project
+target
+tests_run_dir
