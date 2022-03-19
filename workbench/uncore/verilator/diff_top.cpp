@@ -112,7 +112,7 @@ DiffTop::DiffTop(int argc, const char *argv[]) {
 
   /* reset n noop_cycles */
   noop_reset_ncycles(10);
-
+  run_nemu_one_instr(); // start nemu
   /* print seed */
   printf(ESC_BLUE "seed %u" ESC_RST "\n", seed);
 }
@@ -189,7 +189,7 @@ void DiffTop::device_io(int addr, int len, int data,
     char func, char strb, int *resp) {
   assert(func == MX_RD || func == MX_WR);
   assert((addr & 3) == 0);
-
+  printf("IO: 0x%x %s\n", addr, func==MX_RD?"read":"write");
   /* mmio */
   if (!(0 <= addr && addr < 0x08000000)) {
     /* deal with dev_io */

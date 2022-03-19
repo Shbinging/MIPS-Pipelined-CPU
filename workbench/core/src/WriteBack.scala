@@ -31,7 +31,5 @@ class WriteBack extends Module{
         io.gpr_wr.w_en := 1.U
     }
     
-    io.wb_if.valid := exec_wb_fire  & ~reset.asBool()
-
-    // TODO: RESET
+    io.wb_if.valid := exec_wb_fire & ~reset.asBool()
 }

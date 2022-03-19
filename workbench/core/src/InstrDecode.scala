@@ -26,7 +26,7 @@ class InstrDecode extends Module{
     io.id_isu.bits.shamt := if_id_reg.instr(10, 6)
 
     // rd_addr, shamt_rs_sel, sign_ext, exu, op, imm_rt_sel
-    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, false.B, false.B, ALU_ID, ALU_X_OP, false.B),
+    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, false.B, false.B, ALU_ID, ALU_ADD_OP, false.B),
         Array(
             LUI  -> List(rd, true.B, DontCare, ALU_ID, ALU_LUI_OP, false.B), 
             ADD  -> List(rd, true.B, DontCare, ALU_ID, ALU_ADD_OP, true.B),

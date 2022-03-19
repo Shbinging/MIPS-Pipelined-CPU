@@ -13,8 +13,8 @@ class verilator_top extends Module {
     val io = IO(new Bundle {
         val commit = new CommitIO   // defined in interfaces.scala
         val can_log_now = Input(Bool())
+        val vali = Output(Bool())
     })
-
     val gprs = Module(new GPR)
     
     val instr_fetch = Module(new InstrFetch)
@@ -24,7 +24,7 @@ class verilator_top extends Module {
     val alu = Module(new ALU)
     
     val write_back = Module(new WriteBack)
-    
+    io.vali := write_back.io.wb_if.valid
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
     instr_fetch.io.wb_if <> write_back.io.wb_if
     
@@ -47,6 +47,9 @@ class verilator_top extends Module {
         io.commit.gpr(i) := gprs.io.gpr_commit(i)
     }
     io.commit.pc := instr_fetch.io.pc
+
+    val cycle = RegNext(instr_fetch.io.wb_if.fire() | reset.asBool())
+    io.commit.valid := cycle
 }
 
 

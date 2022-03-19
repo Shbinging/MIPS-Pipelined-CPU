@@ -20,7 +20,7 @@ class InstrFetch extends Module{
         pc_reg := io.wb_if.bits.pc_w_data
     }
     val wb_if_fire = RegNext(io.wb_if.fire() | reset.asBool())
-    val wb_if_reg = RegEnableUse(io.wb_if.bits, io.wb_if.fire())
+    // val wb_if_reg = RegEnableUse(io.wb_if.bits, io.wb_if.fire())
 
     val dev = Module(new SimDev)
     dev.io.clock := clock
@@ -32,7 +32,7 @@ class InstrFetch extends Module{
     
     dev.io.in.req.bits.func := MX_RD
     dev.io.in.req.bits.addr := io.pc
-    dev.io.in.req.bits.len := 4.U 
+    dev.io.in.req.bits.len := 3.U   // 00, 01, 10, 11
     dev.io.in.req.valid := true.B
 
     when(wb_if_fire){
