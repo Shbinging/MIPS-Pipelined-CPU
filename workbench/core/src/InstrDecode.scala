@@ -61,6 +61,6 @@ class InstrDecode extends Module{
     io.id_isu.bits.exu := decoded_instr(3)
     io.id_isu.bits.op := decoded_instr(4)
     io.id_isu.bits.imm_rt_sel := decoded_instr(5)
-    io.id_isu.valid := if_id_fire    // complete in 1 cycle
+    io.id_isu.valid := if_id_fire  & ~reset.asBool()   // complete in 1 cycle
     io.out_gpr_read := if_id_reg.instr(25, 16).asTypeOf(new GPRReadIntput)
 }

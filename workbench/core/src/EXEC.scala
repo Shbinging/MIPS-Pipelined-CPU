@@ -88,8 +88,8 @@ class AluPart extends Module{
     val op1 = WireInit(io.ALU_op(1).asUInt())
     val op0 = WireInit(io.ALU_op(0).asUInt())
     ALU_ctr(2) := ~op3 & ~op1 | ~op3 & op2 & op0 | op3 & op1 
-    ALU_ctr(1) := ~op3 & ~op2 & ~op1 | op3 & ~op2 & ~op0 | op2 & op1 & ~op0|op3 & op1
-    ALU_ctr(0) := ~op2 & ~op1 | ~op3 & op2 & op0 | op3 & op2 & op1
+    ALU_ctr(1) := ~op3 & ~op2 & ~op1 | op3 & ~op2 & ~op0 | op2 & op1 & ~op0|op3 & op1 | ~op2 & op1 & op0
+    ALU_ctr(0) := ~op2 & ~op1 | ~op3 & op2 & op0 | op3 & op2 & op1 | ~op2 & op1 & op0
     
     val Adder = Module(new adder)
     Adder.io.A_in := io.A_in
@@ -151,7 +151,7 @@ class ALU extends Module{
         val exec_wb = Decoupled(new EXEC_WB)
     }}
     io.isu_alu.ready := true.B
-    val isu_alu_fire = RegNext(io.isu_alu.fire())
+    val isu_alu_fire = RegNext(io.isu_alu.fire()  & ~reset.asBool())
     val r = RegEnableUse(io.isu_alu.bits, io.isu_alu.fire())
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
