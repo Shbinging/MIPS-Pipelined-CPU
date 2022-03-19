@@ -25,7 +25,7 @@ class ISU extends Module {
             iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_id_isu.shamt, io.gpr_data.rs_data)
             iaBundle.alu_op := reg_id_isu.op
             iaBundle.rd_addr := reg_id_isu.rd_addr
-            io.isu_alu.valid := id_isu_fire     // XXX: 
+            io.isu_alu.valid := id_isu_fire  & ~reset.asBool()    // XXX: 
             io.isu_alu.bits.alu_op := reg_id_isu.op
             switch(reg_id_isu.imm_rt_sel){
                 is(false.B){//imm
