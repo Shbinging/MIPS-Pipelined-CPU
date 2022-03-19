@@ -28,7 +28,7 @@ class InstrDecode extends Module{
     // rd_addr, shamt_rs_sel, sign_ext, exu, op, imm_rt_sel
     val decoded_instr = ListLookup(if_id_reg.instr, List(rd, false.B, false.B, ALU_ID, ALU_X_OP, false.B),
         Array(
-            LUI  -> List(rd, true.B, DontCare, ALU_ID, ALU_X_OP, false.B),  // TODO: X->LUI
+            LUI  -> List(rd, true.B, DontCare, ALU_ID, ALU_LUI_OP, false.B), 
             ADD  -> List(rd, true.B, DontCare, ALU_ID, ALU_ADD_OP, true.B),
             ADDU -> List(rd, true.B, DontCare, ALU_ID, ALU_ADDU_OP, true.B),
             SUB  -> List(rd, true.B, DontCare, ALU_ID, ALU_SUB_OP, true.B),
@@ -38,7 +38,7 @@ class InstrDecode extends Module{
             AND  -> List(rd, true.B, DontCare, ALU_ID, ALU_AND_OP, true.B),
             OR   -> List(rd, true.B, DontCare, ALU_ID, ALU_OR_OP, true.B),
             AND  -> List(rd, true.B, DontCare, ALU_ID, ALU_XOR_OP, true.B),
-            NOR  -> List(rd, true.B, DontCare, ALU_ID, ALU_X2_OP, true.B),    // TODO: X2->NOR
+            NOR  -> List(rd, true.B, DontCare, ALU_ID, ALU_NOR_OP, true.B),  
             SLTI -> List(rt, true.B, true.B, ALU_ID, ALU_SLT_OP, false.B),
             SLTIU-> List(rt, true.B, true.B, ALU_ID, ALU_SLTU_OP, false.B),
             SRA  -> List(rd, false.B, DontCare, ALU_ID, ALU_SRA_OP, true.B),

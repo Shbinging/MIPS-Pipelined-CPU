@@ -192,8 +192,8 @@ class ALU extends Module{
         Overflow_out := alu.io.Overflow_out
         Zero := alu.io.Zero
     }
-    io.out := DontCare
-    io.exec_wb := DontCare
+    // io.out := DontCare
+    // io.exec_wb := DontCare
     io.out.ALU_out := ALU_out
     io.out.Less := Less.asBool()
     io.out.Overflow_out := Overflow_out.asBool()
