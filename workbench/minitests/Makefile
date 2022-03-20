@@ -5,10 +5,10 @@ CFLAGS += -c -O2 -EL -g
 # CFLAGS += -mno-llsc -mno-imadd -mno-mad
 # CFLAGS += -mno-abicalls -g -Iinclude -I.
 
-run-%: build/%.elf EMU_BIN
+run-%: build/%.elf $(EMU_BIN)
 	$(EMU_BIN) -e $<
 
-EMU_BIN:
+$(EMU_BIN):
 	cd .. && make 
 
 
