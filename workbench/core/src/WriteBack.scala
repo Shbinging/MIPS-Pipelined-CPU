@@ -25,13 +25,16 @@ class WriteBack extends Module{
     // no branch
     io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
-    
 
-    when(!reg_alu_output.Overflow_out){
+    when(!reg_alu_output.Overflow_out.asBool() & exec_wb_fire){
+        printf(p"${reg_alu_output}")
         io.gpr_wr.addr := reg_exec_wb.w_addr
         io.gpr_wr.data := reg_alu_output.ALU_out
-        io.gpr_wr.w_en := 1.U
+        io.gpr_wr.w_en := "b1111".U
     }
     
     io.wb_if.valid := exec_wb_fire & ~reset.asBool()
+     when(io.wb_if.valid){
+        printf(p"${reg_exec_wb}")
+    }
 }

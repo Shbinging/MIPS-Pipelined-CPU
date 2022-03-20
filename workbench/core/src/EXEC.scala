@@ -109,11 +109,10 @@ class AluPart extends Module{
     }
 
     io.Zero := Adder.io.Zero
-    
     io.ALU_out := 0.U
     switch(ALU_ctr.asUInt()){
         is(0.U){
-            when (io.ALU_op(0).asBool()){
+            when (!io.ALU_op(0).asBool()){
                 io.ALU_out := io.B_in << 16;
             }.otherwise{
                 io.ALU_out := ~(io.A_in | io.B_in)
@@ -205,7 +204,14 @@ class ALU extends Module{
     io.out.Zero := Zero.asBool() //alu
     
     io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
-    io.exec_wb.bits.w_en := true.B
+    io.exec_wb.bits.w_en := isu_alu_fire
     io.exec_wb.bits.exu_id := ALU_ID
     io.exec_wb.valid := isu_alu_fire  // 1 cycle 
+    when (isu_alu_fire){
+    printf("=====EXEC=====\n")
+    printf(p"${io.isu_alu}\n")
+    printf(p"${io.out}\n")
+    printf(p"${io.exec_wb}\n")
+    printf("==========\n")
+    }
 }
