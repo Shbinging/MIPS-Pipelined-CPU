@@ -1,5 +1,5 @@
 MEMORY {
-  ddr : ORIGIN = 0xbfc20000, LENGTH = 256K
+  ddr : ORIGIN = 0xbfc00000, LENGTH = 1M
 }
 
 SECTIONS {

@@ -50,6 +50,7 @@ class verilator_top extends Module {
 
     val cycle = RegNext(instr_fetch.io.wb_if.fire() | reset.asBool())
     io.commit.valid := cycle
+    io.commit.instr := instr_fetch.io.if_id.bits.instr
 }
 
 
