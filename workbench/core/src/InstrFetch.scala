@@ -19,7 +19,7 @@ class InstrFetch extends Module{
     when(io.wb_if.fire() && io.wb_if.bits.pc_w_en){
         pc_reg := io.wb_if.bits.pc_w_data
     }
-    val wb_if_fire = RegNext(io.wb_if.fire() & ~reset.asBool())
+    val wb_if_fire = RegNext(io.wb_if.fire() | reset.asBool())
     // val wb_if_reg = RegEnableUse(io.wb_if.bits, io.wb_if.fire())
 
     val dev = Module(new SimDev)
@@ -40,5 +40,5 @@ class InstrFetch extends Module{
     }
     
     io.if_id.bits.instr := dev.io.in.resp.bits.data
-    io.if_id.valid := wb_if_fire | reset.asBool()   // complete in 1 cycle
+    io.if_id.valid := wb_if_fire & ~reset.asBool()  // complete in 1 cycle
 }

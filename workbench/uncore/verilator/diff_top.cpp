@@ -112,7 +112,7 @@ DiffTop::DiffTop(int argc, const char *argv[]) {
 
   /* reset n noop_cycles */
   noop_reset_ncycles(10);
-  run_nemu_one_instr(); // start nemu
+  //run_nemu_one_instr(); // start nemu
   /* print seed */
   printf(ESC_BLUE "seed %u" ESC_RST "\n", seed);
 }
