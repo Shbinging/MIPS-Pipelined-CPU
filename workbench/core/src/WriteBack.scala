@@ -17,6 +17,8 @@ class WriteBack extends Module{
     val reg_alu_output = RegEnableUse(io.alu_output, io.exec_wb.fire() && (io.exec_wb.bits.exu_id===ALU_ID))
     val reg_exec_wb = RegEnableUse(io.exec_wb.bits, io.exec_wb.fire())
 
+    printf(p"wb working: ${exec_wb_fire}\n\n")
+
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
     

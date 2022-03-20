@@ -15,6 +15,9 @@ class verilator_top extends Module {
         val can_log_now = Input(Bool())
         val vali = Output(Bool())
     })
+    val global_time = RegInit(1.U(32.W))
+    global_time := global_time + 1.U 
+    printf(p"\n============\nGlobal Time: ${global_time}\n")
     val gprs = Module(new GPR)
     
     val instr_fetch = Module(new InstrFetch)
@@ -48,7 +51,7 @@ class verilator_top extends Module {
     }
     io.commit.pc := instr_fetch.io.pc - 4.U
 
-    io.commit.valid := instr_fetch.io.if_id.fire()
+    io.commit.valid := instr_fetch.io.cycledone
     io.commit.instr := instr_fetch.io.if_id.bits.instr
 }
 

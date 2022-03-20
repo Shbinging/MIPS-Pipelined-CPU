@@ -27,7 +27,7 @@ extern "C" void device_io(unsigned char valid, int addr,
 double sc_time_stamp() { return 0; }
 
 void difftop_epilogue(int sig) {
-  napi_dump_states();
+  // napi_dump_states();
   syscall(__NR_exit, 0);
 }
 
@@ -35,6 +35,7 @@ int main(int argc, const char **argv) {
   signal(SIGINT, difftop_epilogue);
 
   diff_top.reset(new DiffTop(argc, argv));
+  printf("before exec!!!!!!\n");
   int trap_code = diff_top->execute();
 
   if (trap_code == 0) {

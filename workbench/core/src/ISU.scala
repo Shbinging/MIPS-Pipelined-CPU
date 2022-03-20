@@ -15,6 +15,7 @@ class ISU extends Module {
     io.id_isu.ready := true.B   // unidir hand shake 
     val id_isu_fire = RegNext(io.id_isu.fire())
     val reg_id_isu = RegEnableUse(io.id_isu.bits, io.id_isu.fire())
+    printf(p"isu working: ${id_isu_fire}\n")
 
     io.isu_alu <> DontCare
     

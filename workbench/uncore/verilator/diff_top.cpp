@@ -178,8 +178,12 @@ bool DiffTop::run_diff_one_instr() {
 
 int DiffTop::execute() {
   noop_state = NS_Running;
+  printf("run begin!");
+  fflush(NULL);
   while (noop_state == NS_Running) {
+    printf("run before!");fflush(NULL);
     bool chk = run_diff_one_instr();
+    printf("run after!");fflush(NULL);
     if (!chk) abort();
   }
   return noop_trap_code;

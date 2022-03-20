@@ -167,6 +167,8 @@ class ALU extends Module{
     val alu = Module(new AluPart)
     val shift = Module(new barrelShifter)
     
+    printf(p"alu working: ${isu_alu_fire}\n")
+
     shift.io.shift_amount := A_in(4, 0)
     shift.io.shift_in := B_in
     shift.io.shift_op := DontCare
