@@ -55,7 +55,7 @@ class ID_ISU extends Bundle{
     val imm_rt_sel = Output(Bool())
     
     //TODO:3-27
-    val branch_op= Output(UInt(OPCODE_WIDTH.W))
+    val branch_op= Output(UInt(OPCODE_WIDTH.W)) //see config
     val pcNext = Output(UInt(32.W)) //currentpc + 4
     val instr_index = Output(UInt(26.W)) //J type
 }
