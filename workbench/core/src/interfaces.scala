@@ -73,9 +73,7 @@ class EXEC_WB extends Bundle{
 class ALUOutput extends Bundle{
     // TODO:
     val ALU_out = Output(UInt(32.W))
-    val Less = Output(Bool())
     val Overflow_out = Output(Bool())
-    val Zero = Output(Bool())
 }
 
 // read, write memory
