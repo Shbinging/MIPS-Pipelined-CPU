@@ -25,7 +25,8 @@ class verilator_top extends Module {
     val instr_shoot = Module(new ISU )
 
     val alu = Module(new ALU)
-    
+    val bru = Module(new BRU)
+
     val write_back = Module(new WriteBack)
     io.vali := write_back.io.wb_if.valid
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
@@ -39,9 +40,10 @@ class verilator_top extends Module {
     instr_shoot.io.gpr_data <> gprs.io.read_out
     
     alu.io.isu_alu <> instr_shoot.io.isu_alu
-    
-    write_back.io.exec_wb <> alu.io.exec_wb
-    write_back.io.alu_output <> alu.io.out
+    bru.io.isu_bru <> instr_shoot.io.isu_bru
+
+    write_back.io.alu_wb <> alu.io.exec_wb
+    write_back.io.bru_wb <> bru.io.exec_wb
     
     gprs.io.write_in <> write_back.io.gpr_wr
 

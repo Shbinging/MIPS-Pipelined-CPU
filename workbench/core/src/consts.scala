@@ -104,7 +104,7 @@ trait InstrConsts {
 trait ExecUnitIndices {
   val EX_ID_WIDTH = 2
   val ALU_ID      = 0.U(EX_ID_WIDTH.W)
-
+  val BRU_ID = 1.U(EX_ID_WIDTH.W)
 
   val OPCODE_WIDTH = 4
   val ALU_ADDU_OP = "b0000".U(OPCODE_WIDTH.W)
@@ -122,6 +122,19 @@ trait ExecUnitIndices {
   val ALU_ADD_OP = "b1110".U(OPCODE_WIDTH.W)
   val ALU_SUB_OP = "b1111".U(OPCODE_WIDTH.W)
 
+  //XXX:3-27
+  val BRU_BEQ_OP = "b0000".U(OPCODE_WIDTH.W)
+  val BRU_BNE_OP= "b0001".U(OPCODE_WIDTH.W)
+  val BRU_BGEZ_OP= "b0010".U(OPCODE_WIDTH.W) 
+  val BRU_BGTZ_OP= "b0011".U(OPCODE_WIDTH.W) 
+  val BRU_BLEZ_OP= "b0100".U(OPCODE_WIDTH.W) 
+  val BRU_BLTZ_OP= "b0101".U(OPCODE_WIDTH.W) 
+  val BRU_BGEZAL_OP= "b0110".U(OPCODE_WIDTH.W) 
+  val BRU_BLTZAL_OP= "b0111".U(OPCODE_WIDTH.W) 
+  val BRU_J_OP= "b1000".U(OPCODE_WIDTH.W) 
+  val BRU_JAL_OP= "b1001".U(OPCODE_WIDTH.W) 
+  val BRU_JR_OP= "b1010".U(OPCODE_WIDTH.W) 
+  val BRU_JALR_OP= "b1011".U(OPCODE_WIDTH.W) 
 }
 
 trait InstrPattern {

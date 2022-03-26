@@ -11,6 +11,7 @@ class ISU extends Module {
         val id_isu = Flipped(Decoupled(new ID_ISU)) //input
         
         val isu_alu = Decoupled(new ISU_ALU) //output
+        val isu_bru = Decoupled(new ISU_BRU)
     })
     io.id_isu.ready := true.B   // unidir hand shake 
     val id_isu_fire = RegNext(io.id_isu.fire())
@@ -18,7 +19,9 @@ class ISU extends Module {
     printf(p"isu working: ${id_isu_fire}\n")
 
     io.isu_alu <> DontCare
-    
+    io.isu_alu.valid := false.B
+    io.isu_bru <> DontCare
+    io.isu_bru.valid := false.B
     switch(reg_id_isu.exu){
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
@@ -42,6 +45,17 @@ class ISU extends Module {
             }
             io.isu_alu.bits <> iaBundle
         }
+        is(BRU_ID){
+            val bruBundle = Wire(new ISU_BRU)
+            bruBundle := DontCare
+            bruBundle.bru_op := reg_id_isu.branch_op
+            bruBundle.offset := reg_id_isu.imm
+            bruBundle.rd := reg_id_isu.rd_addr
+            bruBundle.rsData := io.gpr_data.rs_data //XXX:need handshake
+            bruBundle.rtData := io.gpr_data.rt_data
+            bruBundle.pcNext := reg_id_isu.pcNext
+            io.isu_bru.valid := id_isu_fire & ~reset.asBool()
+            io.isu_bru.bits <> bruBundle
+        }
     }
-
 }

@@ -11,6 +11,7 @@ class InstrDecode extends Module{
         val out_gpr_read = Flipped(new GPRReadIntput)
         val id_isu = Decoupled(new ID_ISU)
     })
+    //io.id_isu.bits := DontCare
     io.if_id.ready := true.B   // unidir handshake 
     val if_id_fire = RegNext(io.if_id.fire())
     val if_id_reg = RegNext(io.if_id.bits)// RegEnableUse(io.if_id.bits, if_id_fire)

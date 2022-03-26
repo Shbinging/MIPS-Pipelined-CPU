@@ -42,6 +42,8 @@ class IF_ID extends Bundle{
 // ID_RF, RF_ISU, ID_ISU
 class ID_ISU extends Bundle{
     // val id_commit = Output(Bool())
+    val exu = Output(UInt(EX_ID_WIDTH.W))
+    
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
     
@@ -49,9 +51,13 @@ class ID_ISU extends Bundle{
     val shamt = Output(UInt(SHAMT_SZ.W))
     
     val sign_ext = Output(Bool())
-    val exu = Output(UInt(EX_ID_WIDTH.W))
     val op = Output(UInt(OPCODE_WIDTH.W))
     val imm_rt_sel = Output(Bool())
+    
+    //TODO:3-27
+    val branch_op= Output(UInt(OPCODE_WIDTH.W))
+    val pcNext = Output(UInt(32.W)) //currentpc + 4
+    val instr_index = Output(UInt(26.W)) //J type
 }
 
 // ISU_ALU
@@ -63,17 +69,30 @@ class ISU_ALU extends Bundle{
     val rd_addr = Output(UInt(REG_SZ.W))
 }
 
+class ISU_BRU extends Bundle{
+    val bru_op = Output(UInt(OPCODE_WIDTH.W))
+    val pcNext = Output(UInt(conf.data_width.W))
+    val offset = Output(UInt(IMM_SZ.W))
+    val rd = Output(UInt(REG_SZ.W))
+    val rsData = Output(UInt(conf.data_width.W))
+    val rtData = Output(UInt(conf.data_width.W))
+    val instr_index = Output(UInt(26.W))
+}
 // EXEC
-class EXEC_WB extends Bundle{
+class ALU_WB extends Bundle{
     val w_en = Output(Bool())
     val w_addr = Output(UInt(REG_SZ.W))
-    val exu_id = Output(UInt(EX_ID_WIDTH.W))
-}
-
-class ALUOutput extends Bundle{
-    // TODO:
     val ALU_out = Output(UInt(32.W))
     val Overflow_out = Output(Bool())
+   // val exu_id = Output(UInt(EX_ID_WIDTH.W))
+}
+
+class BRU_WB extends Bundle{
+    val w_en = Output(Bool())
+    val w_addr = Output(UInt(REG_SZ.W))
+    val w_data = Output(UInt(conf.data_width.W))
+    val w_pc_en = Output(Bool())
+    val w_pc_addr = Output(UInt(conf.data_width.W))
 }
 
 // read, write memory
