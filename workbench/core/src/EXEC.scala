@@ -181,9 +181,9 @@ class LSU extends Module{
         dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
             LSU_SB_OP -> 0.U,
             LSU_SH_OP -> 1.U,
-            LSU_SW_OP -> 4.U,
-            LSU_SWL_OP -> 4.U,
-            LSU_SWR_OP -> 4.U
+            LSU_SW_OP -> 3.U,
+            LSU_SWL_OP -> 3.U,
+            LSU_SWR_OP -> 3.U
         ))
         when(r.lsu_op === LSU_SWL_OP){
             dev.io.in.req.bits.len := index
