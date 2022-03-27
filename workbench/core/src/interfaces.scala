@@ -80,6 +80,14 @@ class ISU_BRU extends Bundle{
     val rtData = Output(UInt(conf.data_width.W))
     val instr_index = Output(UInt(26.W))
 }
+class ISU_LSU extends Bundle{
+    val lsu_op = Output(UInt(OPCODE_WIDTH.W)) 
+    val rt = Output(UInt(REG_SZ.W))
+    val rsData = Output(UInt(conf.data_width.W))
+    val rtData = Output(UInt(conf.data_width.W))
+    val imm = Output(UInt(IMM_SZ.W))
+}
+
 // EXEC
 class ALU_WB extends Bundle{
     val w_en = Output(Bool())
@@ -97,6 +105,11 @@ class BRU_WB extends Bundle{
     val w_pc_addr = Output(UInt(conf.data_width.W))
 }
 
+class LSU_WB extends Bundle{
+    val w_en = Output(UInt(4.W))
+    val w_addr = Output(UInt(REG_SZ.W))
+    val w_data = Output(UInt(conf.data_width.W))
+}
 // read, write memory
 class MemReq extends Bundle {
   val is_cached = Output(Bool())

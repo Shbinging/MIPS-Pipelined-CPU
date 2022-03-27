@@ -12,6 +12,7 @@ class ISU extends Module {
         
         val isu_alu = Decoupled(new ISU_ALU) //output
         val isu_bru = Decoupled(new ISU_BRU)
+        val isu_lsu = Decoupled(new ISU_LSU)
     })
     io.id_isu.ready := true.B   // unidir hand shake 
     val id_isu_fire = RegNext(io.id_isu.fire())
@@ -22,6 +23,8 @@ class ISU extends Module {
     io.isu_alu.valid := false.B
     io.isu_bru <> DontCare
     io.isu_bru.valid := false.B
+    io.isu_lsu <> DontCare
+    io.isu_lsu.valid := false.B
     switch(reg_id_isu.exu){
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
@@ -56,6 +59,14 @@ class ISU extends Module {
             bruBundle.pcNext := reg_id_isu.pcNext
             io.isu_bru.valid := id_isu_fire & ~reset.asBool()
             io.isu_bru.bits <> bruBundle
+        }
+        is(LSU_ID){
+            io.isu_lsu.valid := id_isu_fire & ~reset.asBool()
+            io.isu_lsu.bits.imm := reg_id_isu.imm
+            io.isu_lsu.bits.rsData := io.gpr_data.rs_data
+            io.isu_lsu.bits.rtData := io.gpr_data.rt_data
+            io.isu_lsu.bits.rt := reg_id_isu.rd_addr
+            io.isu_lsu.bits.lsu_op := reg_id_isu.op
         }
     }
 }
