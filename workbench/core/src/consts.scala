@@ -115,7 +115,8 @@ trait DecodeSelectors {
 trait ExecUnitIndices {
   val EX_ID_WIDTH = 2
   val ALU_ID      = 0.U(EX_ID_WIDTH.W)
-  val BRU_ID = 1.U(EX_ID_WIDTH.W)
+  val BRU_ID      = 1.U(EX_ID_WIDTH.W)
+  val MDU_ID      = 2.U(EX_ID_WIDTH.W)
 
   val OPCODE_WIDTH = 4
   val ALU_ADDU_OP = "b0000".U(OPCODE_WIDTH.W)
@@ -146,6 +147,20 @@ trait ExecUnitIndices {
   val BRU_JAL_OP= "b1001".U(OPCODE_WIDTH.W) 
   val BRU_JR_OP= "b1010".U(OPCODE_WIDTH.W) 
   val BRU_JALR_OP= "b1011".U(OPCODE_WIDTH.W) 
+
+  //MDU
+  val MDU_DIV_OP = "b0000".U(OPCODE_WIDTH.W)
+  val MDU_DIVU_OP = "b0001".U(OPCODE_WIDTH.W)
+  val MDU_MULT_OP = "b0010".U(OPCODE_WIDTH.W)
+  val MDU_MULTU_OP = "b0011".U(OPCODE_WIDTH.W)
+  val MDU_MFHI_OP = "b0100".U(OPCODE_WIDTH.W)
+  val MDU_MFLO_OP = "b0101".U(OPCODE_WIDTH.W)
+  val MDU_MTHI_OP = "b0110".U(OPCODE_WIDTH.W)
+  val MDU_MTLO_OP = "b0111".U(OPCODE_WIDTH.W)
+  val MDU_MADD_OP = "b1000".U(OPCODE_WIDTH.W)
+  val MDU_MADDU_OP = "b1001".U(OPCODE_WIDTH.W)
+  val MDU_MSUB_OP = "b1010".U(OPCODE_WIDTH.W)
+  val MDU_MSUBU_OP = "b1011".U(OPCODE_WIDTH.W)
 }
 
 trait InstrPattern {

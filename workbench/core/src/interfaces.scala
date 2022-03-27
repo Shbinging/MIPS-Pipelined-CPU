@@ -80,6 +80,14 @@ class ISU_BRU extends Bundle{
     val rtData = Output(UInt(conf.data_width.W))
     val instr_index = Output(UInt(26.W))
 }
+
+class ISU_MDU extends Bundle{
+  val mdu_op = Output(UInt(OPCODE_WIDTH.W))
+  val rsData = Output(UInt(conf.data_width.W))
+  val rtData = Output(UInt(conf.data_width.W))
+  val rd = Output(UInt(REG_SZ.W))
+}
+
 // EXEC
 class ALU_WB extends Bundle{
     val w_en = Output(Bool())
@@ -95,6 +103,30 @@ class BRU_WB extends Bundle{
     val w_data = Output(UInt(conf.data_width.W))
     val w_pc_en = Output(Bool())
     val w_pc_addr = Output(UInt(conf.data_width.W))
+}
+
+class MDU_WB extends Bundle{
+  val w_en = Output(Bool())
+  val w_addr = Output(UInt(REG_SZ.W))
+  val w_data = Output(UInt(conf.data_width.W))
+}
+
+
+class DividerIO extends Bundle {
+  val data_dividend_valid = Output(Bool())
+  val data_divisor_valid = Output(Bool())
+  val data_dout_valid = Input(Bool())
+  val data_dividend_ready = Input(Bool())
+  val data_divisor_ready = Input(Bool())
+  val data_dividend_bits = Output(UInt(40.W))
+  val data_divisor_bits = Output(UInt(40.W))
+  val data_dout_bits = Input(UInt(80.W))
+}
+
+class MultiplierIO extends Bundle {
+  val data_a = Output(UInt(33.W))
+  val data_b = Output(UInt(33.W))
+  val data_dout = Input(UInt(66.W))
 }
 
 // read, write memory
