@@ -40,7 +40,8 @@ class InstrDecode extends Module{
             SLTU -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLTU_OP),
             AND  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_AND_OP),
             OR   -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_OR_OP),
-            AND  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_XOR_OP),
+            XOR  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_XOR_OP),
+            AND  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_AND_OP),
             NOR  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_NOR_OP),  
             SLTI -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_SLT_OP),
             SLTIU-> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_SLTU_OP),
@@ -59,15 +60,18 @@ class InstrDecode extends Module{
             // TODO: MOVN 
             // TODO: MOVZ 
 
-            BEQ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BEQ_OP),
-            BNE -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BNE_OP),
-            BLEZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BLEZ_OP),
-            BGTZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BGTZ_OP),
-            BLEZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BLEZ_OP),
+            BEQ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BEQ_OP),
+            BNE -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BNE_OP),
+            BLTZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLTZ_OP),
+            BGTZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BGTZ_OP),
+            BGEZ -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BGEZ_OP),
+            BLEZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLEZ_OP),
+            BLTZAL -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BLTZAL_OP),
+            BGEZAL -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BGEZAL_OP),
             J -> List(DontCare, DontCare, DontCare, DontCare, BRU_ID, BRU_J_OP),
             JAL -> List(31.U(5.W), RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_JAL_OP),
             JR -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JR_OP),
-            JALR -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID,  BRU_JALR_OP),
+            JALR -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JALR_OP),
         )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

@@ -214,12 +214,12 @@ bool DiffTop::run_diff_one_instr() {
 
 int DiffTop::execute() {
 	noop_state = NS_Running;
-	printf("run begin!\n");
-	fflush(NULL);
+	// printf("run begin!\n");
+	// fflush(NULL);
 	while (noop_state == NS_Running) {
-		printf("run before!\n");fflush(NULL);
+		//printf("run before!\n");fflush(NULL);
 		bool chk = run_diff_one_instr();
-		printf("run after!\n");fflush(NULL);
+		//printf("run after!\n");fflush(NULL);
 		if (!chk) abort();
 	}
 	return noop_trap_code;
@@ -229,7 +229,7 @@ void DiffTop::device_io(int addr, int len, int data,
     char func, char strb, int *resp) {
 	assert(func == MX_RD || func == MX_WR);
 	assert((addr & 3) == 0);
-	printf("IO: 0x%x %s\n", addr, func==MX_RD?"read":"write");
+	// printf("IO: 0x%x %s\n", addr, func==MX_RD?"read":"write");
 	/* mmio */
 	if (!(0 <= addr && addr < 0x08000000)) {
 		/* deal with dev_io */

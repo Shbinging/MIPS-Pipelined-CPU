@@ -30,11 +30,11 @@ class GPR extends Module {
     // TODO: support variable lengths configs
     val gprs = RegInit(VecInit(Seq.fill(32){VecInit(Seq.fill(4){0.U(8.W)})}))
 
-
     io.read_out.rs_data := gprs(io.read_in.rs_addr).asUInt()
     io.read_out.rt_data := gprs(io.read_in.rt_addr).asUInt()
    
     when(io.write_in.w_en.asUInt() =/= 0.U & io.write_in.addr =/= 0.U){
+        printf(p"Write to regs: ${io.write_in.addr}, ${io.write_in.data}, ${io.write_in.w_en}\n")
         when(io.write_in.w_en(0)){
             gprs(io.write_in.addr)(0) := io.write_in.data(7, 0)
         }
