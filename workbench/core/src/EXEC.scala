@@ -170,32 +170,149 @@ class LSU extends Module{
                 io.exec_wb.bits.w_en := shiftMask2(index)
             }   
         }.otherwise{
-        dev.io.in.req.bits.func := MX_WR
-        dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
-            LSU_SB_OP -> r.rtData(7, 0),
-            LSU_SH_OP -> r.rtData(15, 0),
-            LSU_SW_OP -> r.rtData,
-            LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
-            LSU_SWR_OP -> (r.rsData >> shiftPos(index))
-        ))
-        dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
-            LSU_SB_OP -> 0.U,
-            LSU_SH_OP -> 1.U,
-            LSU_SW_OP -> 3.U,
-            LSU_SWL_OP -> 3.U,
-            LSU_SWR_OP -> 3.U
-        ))
-        when(r.lsu_op === LSU_SWL_OP){
-            dev.io.in.req.bits.len := index
+            dev.io.in.req.bits.func := MX_WR
+            dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
+                LSU_SB_OP -> r.rtData(7, 0),
+                LSU_SH_OP -> r.rtData(15, 0),
+                LSU_SW_OP -> r.rtData,
+                LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
+                LSU_SWR_OP -> (r.rsData >> shiftPos(index))
+            ))
+            dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
+                LSU_SB_OP -> 0.U,
+                LSU_SH_OP -> 1.U,
+                LSU_SW_OP -> 3.U,
+                LSU_SWL_OP -> 3.U,
+                LSU_SWR_OP -> 3.U
+            ))
+            when(r.lsu_op === LSU_SWL_OP){
+                dev.io.in.req.bits.len := index
+            }
+            when(r.lsu_op === LSU_SWR_OP){
+                dev.io.in.req.bits.len := 3.U - index
+                dev.io.in.req.bits.addr := vAddr + index
+            }
+            io.exec_wb.bits.w_en := 0.U
         }
-        when(r.lsu_op === LSU_SWR_OP){
-            dev.io.in.req.bits.len := 3.U - index
-            dev.io.in.req.bits.addr := vAddr + index
-        }
-        io.exec_wb.bits.w_en := 0.U
     }
+    io.exec_wb.valid := resp_fire & ~reset.asBool()
+}
+
+class Divider extends Module {
+    val io = IO(Flipped(new DividerIO))
+    val dividend = io.data_dividend_bits
+    val divisor = io.data_divisor_bits
+    val quotient = (dividend / divisor).asUInt
+    val remainder = (dividend % divisor).asUInt
+    require(quotient.getWidth == 40)
+    require(remainder.getWidth == 40)
+    val pipe = Pipe(io.data_dividend_valid && io.data_divisor_valid,
+    Cat(quotient, remainder), conf.div_stages)
+
+    io.data_dividend_ready := Y
+    io.data_divisor_ready := Y
+    io.data_dout_valid := pipe.valid
+    io.data_dout_bits := pipe.bits
+}
+
+class Multiplier extends Module {
+    val io = IO(Flipped(new MultiplierIO))
+    val a = io.data_a.asSInt
+    val b = io.data_b.asSInt
+    val pipe = Pipe(Y, (a * b).asUInt, conf.mul_stages)
+
+    io.data_dout := pipe.bits
 }
 
 
-    io.exec_wb.valid := resp_fire & ~reset.asBool()
+class MDU extends Module{
+    val io = IO(new Bundle{
+        val isu_mdu = Flipped(Decoupled(new ISU_MDU))
+        val exec_wb = Decoupled(new MDU_WB)
+    })
+    val multiplier = Module(new Multiplier)
+    val dividor = Module(new Divider)
+    
+    io.isu_mdu.ready := true.B  // always ready 
+    val isu_mdu_fired = RegEnable(io.isu_mdu.fire() & ~reset.asBool(), io.isu_mdu.fire())
+    val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
+    
+    val mdu_wb_valid = RegInit(false.B)
+    val mdu_wb_reg = Reg(new MDU_WB)
+
+    val hi = RegInit(0.U(32.W))
+    val lo = RegInit(0.U(32.W))
+    
+    val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 8
+
+    when(isu_mdu_fired){
+        // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
+        val dividor_input = MuxLookup(isu_mdu_reg.mdu_op, VecInit(false.B, false.B, DontCare, DontCare),
+            Array(
+                MDU_DIV_OP -> VecInit(true.B, true.B, isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
+                MDU_DIVU_OP -> VecInit(true.B, true.B, isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt())
+            )
+        )
+        dividor.io.data_dividend_valid := dividor_input(0)
+        dividor.io.data_divisor_valid := dividor_input(1)
+        dividor.io.data_dividend_bits := dividor_input(2)
+        dividor.io.data_divisor_bits := dividor_input(3)
+        
+        val multiplier_input = MuxLookup(isu_mdu_reg.mdu_op, VecInit((conf.mul_stages).U(3.W), DontCare, DontCare),
+            Array(
+                MDU_MULT_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
+                MDU_MULTU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt()),
+                MDU_MADD_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
+                MDU_MADDU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt()),
+                MDU_MSUB_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
+                MDU_MSUBU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt())
+            )
+        )
+        multiplier_delay_count := multiplier_input(0)
+        multiplier.io.data_a := multiplier_input(1)
+        multiplier.io.data_b := multiplier_input(2)
+        
+        mdu_wb_reg := MuxLookup(isu_mdu_reg.mdu_op, VecInit(false.B, DontCare, DontCare),
+            Array(
+                MDU_MFHI_OP -> VecInit(true.B, isu_mdu_reg.rd, hi),
+                MDU_MFLO_OP -> VecInit(true.B, isu_mdu_reg.rd, lo)
+            )
+        ).asTypeOf(mdu_wb_reg)
+        // mdu_wb_reg <> 
+        // .w_en := mdu_wb(0)
+        // mdu_wb_reg.w_addr := mdu_wb(1)
+        // mdu_wb_reg.w_data := mdu_wb(2)
+
+        hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
+        lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
+
+        when(VecInit(MDU_MTHI_OP, MDU_MTLO_OP, MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
+            mdu_wb_valid := true.B
+        } .otherwise{
+            mdu_wb_valid := false.B
+        }
+    }
+    when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
+        mdu_wb_reg.w_en := false.B 
+        mdu_wb_valid := true.B
+        hi := multiplier.io.data_dout(63, 32)
+        lo := multiplier.io.data_dout(31, 0)
+    }
+    when(dividor.io.data_dout_valid){
+        mdu_wb_reg.w_en := false.B 
+        mdu_wb_valid := true.B
+        hi := dividor.io.data_dout_bits(71, 40)
+        lo := dividor.io.data_dout_bits(31, 0)  
+    }
+
+    when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
+        multiplier_delay_count := multiplier_delay_count - 1.U
+    }
+
+
+    io.exec_wb.valid := mdu_wb_valid
+    io.exec_wb.bits <> mdu_wb_reg
+    when(io.exec_wb.fire()){
+        mdu_wb_valid := false.B
+    }
 }
