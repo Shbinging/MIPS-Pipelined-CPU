@@ -101,6 +101,17 @@ trait InstrConsts {
   val SHAMT_SZ  = 5;
 }
 
+trait DecodeSelectors {
+    val SHAMT_SEL = false.B
+    val RS_SEL = true.B
+    
+    val IMM_SEL=false.B 
+    val RT_SEL=true.B
+
+    val ZERO_EXT_SEL = false.B
+    val SIGN_EXT_SEL = true.B
+}
+
 trait ExecUnitIndices {
   val EX_ID_WIDTH = 2
   val ALU_ID      = 0.U(EX_ID_WIDTH.W)
@@ -204,6 +215,7 @@ object consts extends InstrPattern
   with InstrConsts
   with CacheConsts
   with ExecUnitIndices
+  with DecodeSelectors
 {
   val Y = true.B
   val N = false.B

@@ -51,10 +51,14 @@ class verilator_top extends Module {
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)
     }
-    io.commit.pc := instr_fetch.io.pc - 4.U
+    io.commit.pc := instr_fetch.io.pc
 
     io.commit.valid := instr_fetch.io.cycledone
     io.commit.instr := instr_fetch.io.if_id.bits.instr
+
+    when(io.commit.valid){
+      printf(p"${io.commit}")
+    }
 }
 
 

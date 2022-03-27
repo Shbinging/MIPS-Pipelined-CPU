@@ -16,7 +16,7 @@ class ISU extends Module {
     io.id_isu.ready := true.B   // unidir hand shake 
     val id_isu_fire = RegNext(io.id_isu.fire())
     val reg_id_isu = RegEnableUse(io.id_isu.bits, io.id_isu.fire())
-    printf(p"isu working: ${id_isu_fire}\n")
+    printf(p"isu working: ${id_isu_fire} ${reg_id_isu.exu}\n")
 
     io.isu_alu <> DontCare
     io.isu_alu.valid := false.B
@@ -47,10 +47,10 @@ class ISU extends Module {
         }
         is(BRU_ID){
             val bruBundle = Wire(new ISU_BRU)
-            bruBundle := DontCare
-            bruBundle.bru_op := reg_id_isu.branch_op
+            bruBundle.bru_op := reg_id_isu.op
             bruBundle.offset := reg_id_isu.imm
             bruBundle.rd := reg_id_isu.rd_addr
+            bruBundle.instr_index := reg_id_isu.instr_index
             bruBundle.rsData := io.gpr_data.rs_data //XXX:need handshake
             bruBundle.rtData := io.gpr_data.rt_data
             bruBundle.pcNext := reg_id_isu.pcNext

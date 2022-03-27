@@ -37,6 +37,7 @@ class RB_IF extends Bundle{
 class IF_ID extends Bundle{
     // val if_commit = Output(Bool())
     val instr = Output(UInt(conf.data_width.W))
+    val pcNext = Output(UInt(conf.addr_width.W))
 }
 
 // ID_RF, RF_ISU, ID_ISU
@@ -50,13 +51,14 @@ class ID_ISU extends Bundle{
     val shamt_rs_sel = Output(Bool())
     val shamt = Output(UInt(SHAMT_SZ.W))
     
-    val sign_ext = Output(Bool())
-    val op = Output(UInt(OPCODE_WIDTH.W))
     val imm_rt_sel = Output(Bool())
+    val sign_ext = Output(Bool())
+    
+    val op = Output(UInt(OPCODE_WIDTH.W))
     
     //TODO:3-27
-    val branch_op= Output(UInt(OPCODE_WIDTH.W)) //see config
-    val pcNext = Output(UInt(32.W)) //currentpc + 4
+    // val branch_op= Output(UInt(OPCODE_WIDTH.W)) //see config, use oop
+    val pcNext = Output(UInt(conf.addr_width.W)) //currentpc + 4
     val instr_index = Output(UInt(26.W)) //J type
 }
 

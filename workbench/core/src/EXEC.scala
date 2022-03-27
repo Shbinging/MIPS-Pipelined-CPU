@@ -26,7 +26,7 @@ class ALU extends Module{
         (r.alu_op === ALU_LUI_OP)-> (B_in << 16),
         (r.alu_op === ALU_NOR_OP)-> (~(A_in | B_in)),
         (r.alu_op === ALU_OR_OP) -> (A_in | B_in),
-        (r.alu_op === ALU_SLL_OP)-> (B_in << A_in(3, 0).asUInt()),
+        (r.alu_op === ALU_SLL_OP)-> (B_in << A_in(4, 0).asUInt()),
         (r.alu_op === ALU_SLTU_OP) -> (Mux((A_in < B_in).asBool(), 1.U, 0.U)),
         (r.alu_op === ALU_SLT_OP) -> (Mux((A_in.asSInt() < B_in.asSInt()).asBool(), 1.U, 0.U)),
         (r.alu_op === ALU_SRA_OP) -> (B_in.asSInt() >> A_in(3, 0).asUInt()).asUInt(),
@@ -58,6 +58,8 @@ class BRU extends Module{
         val isu_bru = Flipped(Decoupled(new ISU_BRU))
         val exec_wb = Decoupled(new BRU_WB)
     }}
+    io.isu_bru.ready := true.B  // XXX: always ready
+    
     val isu_bur_fire = RegNext(io.isu_bru.fire()  & ~reset.asBool())
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
     val bruwb = Wire(new BRU_WB)
@@ -81,8 +83,8 @@ class BRU extends Module{
     when(needJump){
         bruwb.w_pc_en := true.B
         bruwb.w_pc_addr := MuxLookup(r.bru_op, (r.pcNext.asSInt() + (r.offset << 2).asSInt()).asUInt(), Array(
-            BRU_J_OP -> Cat(r.pcNext(31, 28), (r.instr_index << 2)).asUInt(),
-            BRU_JAL_OP -> Cat(r.pcNext(31, 28), (r.instr_index << 2)).asUInt(),
+            BRU_J_OP -> Cat(r.pcNext(31, 28), Cat(r.instr_index, "b00".U(2.W))),
+            BRU_JAL_OP -> Cat(r.pcNext(31, 28), Cat(r.instr_index, "b00".U(2.W))),
             BRU_JR_OP -> r.rsData,
             BRU_JALR_OP -> r.rsData,
         ))
@@ -100,5 +102,9 @@ class BRU extends Module{
 //bruwb.w_pc_addr := 
     io.isu_bru.ready := true.B
     io.exec_wb.valid := isu_bur_fire
+    when(isu_bur_fire){
+        printf(p"BRU_OP: ${r}\n")
+        printf(p"BRUWB: ${bruwb}\n")
+    }
     io.exec_wb.bits <> bruwb
 }

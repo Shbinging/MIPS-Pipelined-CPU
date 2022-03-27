@@ -25,44 +25,59 @@ class InstrDecode extends Module{
 
     io.id_isu.bits.imm := if_id_reg.instr(15, 0)
     io.id_isu.bits.shamt := if_id_reg.instr(10, 6)
+    io.id_isu.bits.instr_index := if_id_reg.instr(26, 0)
+    io.id_isu.bits.pcNext := if_id_reg.pcNext
 
-    // rd_addr, shamt_rs_sel, sign_ext, exu, op, imm_rt_sel
-    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, false.B, false.B, ALU_ID, ALU_ADD_OP, false.B),
+    // rd_addr, shamt_rs_sel, imm_rt_sel, sign_ext, exu, op 
+    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, RS_SEL, RT_SEL, ZERO_EXT_SEL, ALU_ID, ALU_ADD_OP),
         Array(
-            LUI  -> List(rt, true.B, DontCare, ALU_ID, ALU_LUI_OP, false.B, 20.U), 
-            ADD  -> List(rd, true.B, DontCare, ALU_ID, ALU_ADD_OP, true.B, 20.U),
-            ADDU -> List(rd, true.B, DontCare, ALU_ID, ALU_ADDU_OP, true.B, 20.U),
-            SUB  -> List(rd, true.B, DontCare, ALU_ID, ALU_SUB_OP, true.B, 20.U),
-            SUBU -> List(rd, true.B, DontCare, ALU_ID, ALU_SUBU_OP, true.B, 20.U),
-            SLT  -> List(rd, true.B, DontCare, ALU_ID, ALU_SLT_OP, true.B, 20.U),
-            SLTU -> List(rd, true.B, DontCare, ALU_ID, ALU_SLTU_OP, true.B, 20.U),
-            AND  -> List(rd, true.B, DontCare, ALU_ID, ALU_AND_OP, true.B, 20.U),
-            OR   -> List(rd, true.B, DontCare, ALU_ID, ALU_OR_OP, true.B, 20.U),
-            AND  -> List(rd, true.B, DontCare, ALU_ID, ALU_XOR_OP, true.B, 20.U),
-            NOR  -> List(rd, true.B, DontCare, ALU_ID, ALU_NOR_OP, true.B, 20.U),  
-            SLTI -> List(rt, true.B, true.B, ALU_ID, ALU_SLT_OP, false.B, 20.U),
-            SLTIU-> List(rt, true.B, true.B, ALU_ID, ALU_SLTU_OP, false.B, 20.U),
-            SRA  -> List(rd, false.B, DontCare, ALU_ID, ALU_SRA_OP, true.B, 20.U),
-            SRL  -> List(rd, false.B, DontCare, ALU_ID, ALU_SRL_OP, true.B, 20.U),
-            SLL  -> List(rd, false.B, DontCare, ALU_ID, ALU_SLL_OP, true.B, 20.U),
-            SRAV -> List(rd, true.B, DontCare, ALU_ID, ALU_SRA_OP, true.B, 20.U),
-            SRLV -> List(rd, true.B, DontCare, ALU_ID, ALU_SRL_OP, true.B, 20.U),
-            SLLV -> List(rd, true.B, DontCare, ALU_ID, ALU_SLL_OP, true.B, 20.U),
+            LUI  -> List(rt, RS_SEL, IMM_SEL, DontCare, ALU_ID, ALU_LUI_OP), 
+            ADD  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP),
+            ADDU -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADDU_OP),
+            SUB  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SUB_OP),
+            SUBU -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SUBU_OP),
+            SLT  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLT_OP),
+            SLTU -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLTU_OP),
+            AND  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_AND_OP),
+            OR   -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_OR_OP),
+            AND  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_XOR_OP),
+            NOR  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_NOR_OP),  
+            SLTI -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_SLT_OP),
+            SLTIU-> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_SLTU_OP),
+            SRA  -> List(rd, SHAMT_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRA_OP),
+            SRL  -> List(rd, SHAMT_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRL_OP),
+            SLL  -> List(rd, SHAMT_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLL_OP),
+            SRAV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRA_OP),
+            SRLV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRL_OP),
+            SLLV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLL_OP),
             
-            ADDI -> List(rt, true.B, true.B, ALU_ID, ALU_ADD_OP, false.B, 20.U),
-            ADDIU-> List(rt, true.B, true.B, ALU_ID, ALU_ADDU_OP, false.B, 20.U),
-            ANDI -> List(rt, true.B, false.B, ALU_ID, ALU_AND_OP, false.B, 20.U),
-            ORI  -> List(rt, true.B, false.B, ALU_ID, ALU_OR_OP, false.B, 20.U),
-            XORI -> List(rt, true.B, false.B, ALU_ID, ALU_XOR_OP, false.B, 20.U),
+            ADDI -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_ADD_OP),
+            ADDIU-> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_ADDU_OP),
+            ANDI -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_AND_OP),
+            ORI  -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_OR_OP),
+            XORI -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_XOR_OP),
+            // TODO: MOVN 
+            // TODO: MOVZ 
+
+            BEQ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BEQ_OP),
+            BNE -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BNE_OP),
+            BLEZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BLEZ_OP),
+            BGTZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BGTZ_OP),
+            BLEZ -> List(DontCare, RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_BLEZ_OP),
+            J -> List(DontCare, DontCare, DontCare, DontCare, BRU_ID, BRU_J_OP),
+            JAL -> List(31.U(5.W), RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_JAL_OP),
+            JR -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JR_OP),
+            JALR -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID,  BRU_JALR_OP),
         )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)
     io.id_isu.bits.shamt_rs_sel := decoded_instr(1)
-    io.id_isu.bits.sign_ext := decoded_instr(2)
-    io.id_isu.bits.exu := decoded_instr(3)
-    io.id_isu.bits.op := decoded_instr(4)
-    io.id_isu.bits.imm_rt_sel := decoded_instr(5)
-    io.id_isu.valid := if_id_fire  & ~reset.asBool()   // complete in 1 cycle
+    io.id_isu.bits.imm_rt_sel := decoded_instr(2)
+    io.id_isu.bits.sign_ext := decoded_instr(3)
+    io.id_isu.bits.exu := decoded_instr(4)
+    io.id_isu.bits.op := decoded_instr(5)
+    
+    io.id_isu.valid := if_id_fire  & ~reset.asBool()   // TODO: complete in 1 cycle
 
     when(io.id_isu.valid){
         printf(p"xxx${if_id_reg}")
