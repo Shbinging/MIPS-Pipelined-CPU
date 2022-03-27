@@ -5,6 +5,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import java.awt.MouseInfo
 
 
 
@@ -26,6 +27,7 @@ class verilator_top extends Module {
 
     val alu = Module(new ALU)
     val bru = Module(new BRU)
+    val lsu = Module(new LSU)
 
     val write_back = Module(new WriteBack)
     io.vali := write_back.io.wb_if.valid
@@ -41,10 +43,12 @@ class verilator_top extends Module {
     
     alu.io.isu_alu <> instr_shoot.io.isu_alu
     bru.io.isu_bru <> instr_shoot.io.isu_bru
+    lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
 
     write_back.io.alu_wb <> alu.io.exec_wb
     write_back.io.bru_wb <> bru.io.exec_wb
-    
+    write_back.io.lsu_wb <> lsu.io.exec_wb
+
     gprs.io.write_in <> write_back.io.gpr_wr
 
     io.commit <> DontCare
