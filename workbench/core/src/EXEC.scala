@@ -178,7 +178,13 @@ class LSU extends Module{
             LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
             LSU_SWR_OP -> (r.rsData >> shiftPos(index))
         ))
-        dev.io.in.req.bits.len := 3.U
+        dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
+            LSU_SB_OP -> 0.U,
+            LSU_SH_OP -> 1.U,
+            LSU_SW_OP -> 4.U,
+            LSU_SWL_OP -> 4.U,
+            LSU_SWR_OP -> 4.U
+        ))
         when(r.lsu_op === LSU_SWL_OP){
             dev.io.in.req.bits.len := index
         }
