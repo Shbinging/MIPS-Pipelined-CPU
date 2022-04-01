@@ -137,7 +137,7 @@ class LSU extends Module{
 	})
 	val exec_reg = Reg(new Bundle{
 		val preRead = Bool()
-		val func = UInt(3.W)
+		val func = UInt(4.W)
 		val preReadData = UInt(conf.data_width.W)//need calc
 	})
 	val write_reg = Reg(new Bundle{
@@ -165,18 +165,20 @@ class LSU extends Module{
 			val rt = Wire(UInt(5.W))
 			rt := r.rt
 			val decoded_instr = ListLookup(r.lsu_op, List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_B, DontCare, DontCare, false.B), Array(
+					//read
 					BitPat(LSU_LB_OP)->List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_B, DontCare, DontCare, false.B),
 					BitPat(LSU_LBU_OP)->List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_BU, DontCare, DontCare, false.B),
 					BitPat(LSU_LH_OP)->List("b1111".U(4.W), rt, vAddr, 1.U, true.B, true.B, LSU_FUNC_H, DontCare, DontCare, false.B),
 					BitPat(LSU_LHU_OP)->List("b1111".U(4.W), rt, vAddr, 1.U, true.B, true.B, LSU_FUNC_HU, DontCare, DontCare, false.B),
 					BitPat(LSU_LW_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WU, DontCare, DontCare, false.B),
-					BitPat(LSU_LWL_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WL, DontCare, DontCare, false.B),
-					BitPat(LSU_LWR_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WR, DontCare, DontCare, false.B),
-					BitPat(LSU_SB_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_BU, vAddr, 0.U, true.B),
-					BitPat(LSU_SH_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_HU, vAddr, 1.U, true.B),
-					BitPat(LSU_SW_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_WU, vAddr, 3.U, true.B),
-					BitPat(LSU_SWL_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WL, vAddr, 3.U, true.B),
-					BitPat(LSU_SWR_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WR, vAddr, 3.U, true.B),
+					BitPat(LSU_LWL_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_RWL, DontCare, DontCare, false.B),
+					BitPat(LSU_LWR_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_RWR, DontCare, DontCare, false.B),
+					//write
+					BitPat(LSU_SB_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 0.U, true.B),
+					BitPat(LSU_SH_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 1.U, true.B),
+					BitPat(LSU_SW_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 3.U, true.B),
+					BitPat(LSU_SWL_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWL, vAddr, 3.U, true.B),
+					BitPat(LSU_SWR_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWR, vAddr, 3.U, true.B),
 				)
 			)
 			back_reg.w_en := decoded_instr(0)
@@ -211,6 +213,7 @@ class LSU extends Module{
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
+
 				val index = WireInit(write_reg.addr(1, 0).asUInt())
 				write_reg.w_data := Mux1H(Seq(
 					(exec_reg.func === LSU_FUNC_B)->(exec_reg.preReadData(7, 0).asTypeOf(SInt(32.W)).asUInt()),
@@ -218,8 +221,11 @@ class LSU extends Module{
 					(exec_reg.func === LSU_FUNC_H)->(exec_reg.preReadData(15, 0).asTypeOf(SInt(32.W)).asUInt()),
 					(exec_reg.func === LSU_FUNC_HU)->(exec_reg.preReadData(15, 0).asTypeOf(UInt(32.W)).asUInt()),
 					(exec_reg.func === LSU_FUNC_W)->(exec_reg.preReadData.asTypeOf(SInt(32.W)).asUInt()),
-					(exec_reg.func === LSU_FUNC_WU)->((exec_reg.preReadData << ((~index) << 3)) | ((r.rtData) & shiftMask1(index))).asTypeOf(UInt(32.W)),
-					(exec_reg.func === LSU_FUNC_WL)->((exec_reg.preReadData >> (index << 3)) | (r.rtData & shiftMask2(index))).asTypeOf(UInt(32.W)),
+					(exec_reg.func === LSU_FUNC_WU)->(exec_reg.preReadData.asTypeOf(UInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_RWL)->((exec_reg.preReadData << ((~index) << 3)) | ((r.rtData) & shiftMask1(index))).asTypeOf(UInt(32.W)),
+					(exec_reg.func === LSU_FUNC_RWR)->((exec_reg.preReadData >> (index << 3)) | (r.rtData & shiftMask2(index))).asTypeOf(UInt(32.W)),
+					(exec_reg.func === LSU_FUNC_WWL) ->((r.rtData >> ((~index) << 3)) | (exec_reg.preReadData & shiftMask2(~index))).asTypeOf(UInt(32.W)),
+					(exec_reg.func === LSU_FUNC_WWR) ->((r.rtData << (index << 3)) | (exec_reg.preReadData & shiftMask1(~index))).asTypeOf(UInt(32.W))
 				)
 				).asTypeOf(UInt(32.W))
 			}.otherwise{
