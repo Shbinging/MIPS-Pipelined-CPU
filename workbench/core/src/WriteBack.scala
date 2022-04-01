@@ -55,6 +55,7 @@ class WriteBack extends Module{
         io.gpr_wr.addr := reg_mdu_wb.w_addr
         io.gpr_wr.data := reg_mdu_wb.w_data
         io.gpr_wr.w_en := Mux(reg_mdu_wb.w_en, "b1111".U, 0.U)
+        printf(p"w_en: ${io.gpr_wr.w_en} w_data: ${io.gpr_wr.data}\n")
         io.wb_if.bits.pc_w_data := false.B
     }
     
