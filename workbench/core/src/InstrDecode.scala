@@ -15,7 +15,7 @@ class InstrDecode extends Module{
     io.if_id.ready := true.B   // unidir handshake 
     val if_id_fire = RegNext(io.if_id.fire())
     val if_id_reg = RegNext(io.if_id.bits)// RegEnableUse(io.if_id.bits, if_id_fire)
-    printf(p"decode working: ${if_id_fire}\n")
+    // printf(p"decode working: ${if_id_fire}\n")
 
 
     val instr_op = if_id_reg.instr(31, 26)
@@ -60,18 +60,45 @@ class InstrDecode extends Module{
             // TODO: MOVN 
             // TODO: MOVZ 
 
-            BEQ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BEQ_OP),
-            BNE -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BNE_OP),
-            BLTZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLTZ_OP),
-            BGTZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BGTZ_OP),
-            BGEZ -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BGEZ_OP),
-            BLEZ -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLEZ_OP),
+            BEQ    -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BEQ_OP),
+            BNE    -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BNE_OP),
+            BLTZ   -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLTZ_OP),
+            BGTZ   -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BGTZ_OP),
+            BGEZ   -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BGEZ_OP),
+            BLEZ   -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BLEZ_OP),
             BLTZAL -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BLTZAL_OP),
             BGEZAL -> List(DontCare, RS_SEL, DontCare, SIGN_EXT_SEL, BRU_ID, BRU_BGEZAL_OP),
-            J -> List(DontCare, DontCare, DontCare, DontCare, BRU_ID, BRU_J_OP),
-            JAL -> List(31.U(5.W), RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_JAL_OP),
-            JR -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JR_OP),
-            JALR -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JALR_OP),
+            J      -> List(DontCare, DontCare, DontCare, DontCare, BRU_ID, BRU_J_OP),
+            JAL    -> List(31.U(5.W), RS_SEL, RT_SEL, DontCare, BRU_ID, BRU_JAL_OP),
+            JR     -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JR_OP),
+            JALR   -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JALR_OP),
+            
+            LW  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LW_OP),
+            LH  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LH_OP),
+            LHU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LHU_OP),
+            LB  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LB_OP),
+            LBU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LBU_OP), 
+            LWL -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWL_OP),
+            LWR -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWR_OP),
+            SW  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SW_OP),
+            SH  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SH_OP),
+            SB  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SB_OP),
+            SWL -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SWL_OP),
+            SWR -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SWR_OP),     
+
+            MFHI -> List(rd, DontCare, DontCare, DontCare, MDU_ID, MDU_MFHI_OP),
+            MFLO -> List(rd, DontCare, DontCare, DontCare, MDU_ID, MDU_MFLO_OP),
+            MTHI -> List(DontCare, RS_SEL, DontCare, DontCare, MDU_ID, MDU_MTHI_OP),
+            MTLO -> List(DontCare, RS_SEL, DontCare, DontCare, MDU_ID, MDU_MTLO_OP),
+            MUL  -> List(rd, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MUL_OP),
+            MULT -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MULT_OP),
+            MULTU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MULTU_OP),
+            DIV  -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_DIV_OP),
+            DIVU -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_DIVU_OP),
+            MADD -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MADD_OP),
+            MADDU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MADDU_OP),
+            MSUB -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUB_OP),
+            MSUBU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUBU_OP)
         )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)
@@ -83,9 +110,9 @@ class InstrDecode extends Module{
     
     io.id_isu.valid := if_id_fire  & ~reset.asBool()   // TODO: complete in 1 cycle
 
-    when(io.id_isu.valid){
-        printf(p"xxx${if_id_reg}")
-    }
+    // when(io.id_isu.valid){
+    //     printf(p"xxx${if_id_reg}")
+    // }
 
     io.out_gpr_read := if_id_reg.instr(25, 16).asTypeOf(new GPRReadIntput)
 }

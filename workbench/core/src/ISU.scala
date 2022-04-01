@@ -13,11 +13,12 @@ class ISU extends Module {
         val isu_alu = Decoupled(new ISU_ALU) //output
         val isu_bru = Decoupled(new ISU_BRU)
         val isu_lsu = Decoupled(new ISU_LSU)
+        val isu_mdu = Decoupled(new ISU_MDU)
     })
     io.id_isu.ready := true.B   // unidir hand shake 
     val id_isu_fire = RegNext(io.id_isu.fire())
     val reg_id_isu = RegEnableUse(io.id_isu.bits, io.id_isu.fire())
-    printf(p"isu working: ${id_isu_fire} ${reg_id_isu.exu}\n")
+    // printf(p"isu working: ${id_isu_fire} ${reg_id_isu.exu}\n")
 
     io.isu_alu <> DontCare
     io.isu_alu.valid := false.B
@@ -25,6 +26,8 @@ class ISU extends Module {
     io.isu_bru.valid := false.B
     io.isu_lsu <> DontCare
     io.isu_lsu.valid := false.B
+    io.isu_mdu <> DontCare
+    io.isu_mdu.valid := false.B
     switch(reg_id_isu.exu){
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
@@ -61,12 +64,19 @@ class ISU extends Module {
             io.isu_bru.bits <> bruBundle
         }
         is(LSU_ID){
-            io.isu_lsu.valid := id_isu_fire & ~reset.asBool()
+            io.isu_lsu.valid := id_isu_fire & ~reset.asBool()   // FIXME
             io.isu_lsu.bits.imm := reg_id_isu.imm
             io.isu_lsu.bits.rsData := io.gpr_data.rs_data
             io.isu_lsu.bits.rtData := io.gpr_data.rt_data
             io.isu_lsu.bits.rt := reg_id_isu.rd_addr
             io.isu_lsu.bits.lsu_op := reg_id_isu.op
+        }
+        is(MDU_ID){
+            io.isu_mdu.valid := id_isu_fire & ~reset.asBool()   // FIXME
+            io.isu_mdu.bits.mdu_op := reg_id_isu.op
+            io.isu_mdu.bits.rsData := io.gpr_data.rs_data
+            io.isu_mdu.bits.rtData := io.gpr_data.rt_data
+            io.isu_mdu.bits.rd := reg_id_isu.rd_addr
         }
     }
 }
