@@ -60,9 +60,6 @@ class BRU extends Module{
     io.isu_bru.ready := true.B  // XXX: always ready
     
     val isu_bur_fire = RegNext(io.isu_bru.fire()  & ~reset.asBool())
-    when(isu_bur_fire){
-        printf("BRU WORKING\n")
-    }
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
     val bruwb = Wire(new BRU_WB)
     bruwb := DontCare
@@ -240,44 +237,37 @@ class MDU extends Module{
     
     val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 8
 
+
     when(isu_mdu_fired){
         // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
-        val dividor_input = MuxLookup(isu_mdu_reg.mdu_op, VecInit(false.B, false.B, DontCare, DontCare),
-            Array(
-                MDU_DIV_OP -> VecInit(true.B, true.B, isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
-                MDU_DIVU_OP -> VecInit(true.B, true.B, isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt())
-            )
+        dividor.io.data_dividend_valid := VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
+        dividor.io.data_divisor_valid := VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
+        // DIV or DIVU
+        dividor.io.data_dividend_bits := Cat(
+            Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rsData(31)), 0.U(8.W)),
+            isu_mdu_reg.rsData
         )
-        dividor.io.data_dividend_valid := dividor_input(0)
-        dividor.io.data_divisor_valid := dividor_input(1)
-        dividor.io.data_dividend_bits := dividor_input(2)
-        dividor.io.data_divisor_bits := dividor_input(3)
-        
-        val multiplier_input = MuxLookup(isu_mdu_reg.mdu_op, VecInit((conf.mul_stages).U(3.W), DontCare, DontCare),
-            Array(
-                MDU_MUL_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
-                MDU_MULT_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
-                MDU_MULTU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt()),
-                MDU_MADD_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
-                MDU_MADDU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt()),
-                MDU_MSUB_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
-                MDU_MSUBU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt())
-            )
+        dividor.io.data_divisor_bits := Cat(
+            Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rtData(31)), 0.U(8.W)),
+            isu_mdu_reg.rtData
+        )        
+
+        multiplier_delay_count := Mux(
+            VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op),
+            (conf.mul_stages).U(3.W), (conf.mul_stages-1).U(3.W)
         )
-        multiplier_delay_count := multiplier_input(0)
-        multiplier.io.data_a := multiplier_input(1)
-        multiplier.io.data_b := multiplier_input(2)
+        multiplier.io.data_a := Cat(
+            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), isu_mdu_reg.rsData(31), 0.U(1.W)),
+            isu_mdu_reg.rsData
+        )
+        multiplier.io.data_b := Cat(
+            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), isu_mdu_reg.rtData(31), 0.U(1.W)),
+            isu_mdu_reg.rtData
+        )
         
-        mdu_wb_reg := MuxLookup(isu_mdu_reg.mdu_op, VecInit(false.B, DontCare, DontCare),
-            Array(
-                MDU_MFHI_OP -> VecInit(true.B, isu_mdu_reg.rd, hi),
-                MDU_MFLO_OP -> VecInit(true.B, isu_mdu_reg.rd, lo)
-            )
-        ).asTypeOf(mdu_wb_reg)
-        // mdu_wb_reg <> 
-        // .w_en := mdu_wb(0)
-        // mdu_wb_reg.w_addr := mdu_wb(1)
-        // mdu_wb_reg.w_data := mdu_wb(2)
+        mdu_wb_reg.w_en := VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)
+        mdu_wb_reg.w_addr := isu_mdu_reg.rd 
+        mdu_wb_reg.w_data := Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)
 
         hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
         lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
@@ -288,6 +278,12 @@ class MDU extends Module{
             mdu_wb_valid := false.B
         }
         isu_mdu_fired := false.B
+        printf(p"ISU_MDU_FIRED! with ${isu_mdu_reg.mdu_op}\n")
+    } .otherwise{
+        dividor.io <> DontCare
+        dividor.io.data_dividend_valid := false.B
+        dividor.io.data_divisor_valid := false.B
+        multiplier.io <> DontCare
     }
 
     when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
@@ -300,9 +296,9 @@ class MDU extends Module{
         } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
             hi := hi - multiplier.io.data_dout(63, 32)
             lo := lo - multiplier.io.data_dout(31, 0)
-        } elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
-            mdu_wb_reg.addr := isu_mdu_reg.rd
-            mdu_wb_reg.data := multiplier.io.data_dout(31, 0)
+        } .elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
+            mdu_wb_reg.w_addr := isu_mdu_reg.rd
+            mdu_wb_reg.w_data := multiplier.io.data_dout(31, 0)
         }.otherwise{
             hi := multiplier.io.data_dout(63, 32)
             lo := multiplier.io.data_dout(31, 0)
@@ -313,6 +309,7 @@ class MDU extends Module{
         mdu_wb_valid := true.B
         hi := dividor.io.data_dout_bits(71, 40)
         lo := dividor.io.data_dout_bits(31, 0)  
+        printf(p"DIV: ${dividor.io.data_dout_bits(71, 40)} - ${ dividor.io.data_dout_bits(31, 0)}\n")
     }
 
     when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
@@ -325,4 +322,5 @@ class MDU extends Module{
     when(io.exec_wb.fire()){
         mdu_wb_valid := false.B
     }
+    printf(p"fire to wb: ${io.exec_wb.fire()}")
 }

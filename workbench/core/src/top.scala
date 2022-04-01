@@ -63,9 +63,9 @@ class verilator_top extends Module {
     io.commit.valid := instr_fetch.io.cycledone
     io.commit.instr := instr_fetch.io.if_id.bits.instr
 
-    when(io.commit.valid){
-      printf(p"${io.commit}\n")
-    }
+    // when(io.commit.valid){
+    //   printf(p"${io.commit}\n")
+    // }
 }
 
 

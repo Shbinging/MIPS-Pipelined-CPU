@@ -26,6 +26,8 @@ class ISU extends Module {
     io.isu_bru.valid := false.B
     io.isu_lsu <> DontCare
     io.isu_lsu.valid := false.B
+    io.isu_mdu <> DontCare
+    io.isu_mdu.valid := false.B
     switch(reg_id_isu.exu){
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
@@ -71,7 +73,7 @@ class ISU extends Module {
         }
         is(MDU_ID){
             io.isu_mdu.valid := id_isu_fire & ~reset.asBool()   // FIXME
-            io.isu_mdu.bits.mdu_op := io.id_isu.op
+            io.isu_mdu.bits.mdu_op := reg_id_isu.op
             io.isu_mdu.bits.rsData := io.gpr_data.rs_data
             io.isu_mdu.bits.rtData := io.gpr_data.rt_data
             io.isu_mdu.bits.rd := reg_id_isu.rd_addr
