@@ -142,7 +142,7 @@ class LSU extends Module{
 	})
 	val write_reg = Reg(new Bundle{
 		val addr = UInt(conf.data_width.W)
-		val len = UInt(2.W)
+		val strb = UInt(4.W)
 		val en = Bool()
 		val w_data = UInt(conf.data_width.W)
 	})
@@ -150,11 +150,11 @@ class LSU extends Module{
 	dev.io.clock := clock
     dev.io.reset := reset.asBool() 
     dev.io.in.req.bits.is_cached := DontCare
-    dev.io.in.req.bits.strb := "b1111".U
     dev.io.in.req.bits.data := DontCare
     dev.io.in.req.valid := false.B
     dev.io.in.resp.ready := false.B
 	io.exec_wb.valid := false.B
+    //printf("state %d valid %d\n", state_reg, io.exec_wb.valid)
 	switch(state_reg){
 		is(LSU_DIE){
 			io.exec_wb.valid:=false.B
@@ -162,6 +162,9 @@ class LSU extends Module{
 		is(LSU_DECODE){
 			val vAddr = Wire(UInt(32.W))
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
+            val offset = Wire(UInt(2.W))
+            offset := vAddr(1, 0)
+            //printf("%x %x %x\n", r.imm, r.rsData, vAddr)
 			val rt = Wire(UInt(5.W))
 			rt := r.rt
 			val decoded_instr = ListLookup(r.lsu_op, List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_B, DontCare, DontCare, false.B), Array(
@@ -174,11 +177,11 @@ class LSU extends Module{
 					BitPat(LSU_LWL_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_RWL, DontCare, DontCare, false.B),
 					BitPat(LSU_LWR_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_RWR, DontCare, DontCare, false.B),
 					//write
-					BitPat(LSU_SB_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 0.U, true.B),
-					BitPat(LSU_SH_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 1.U, true.B),
-					BitPat(LSU_SW_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, 3.U, true.B),
-					BitPat(LSU_SWL_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWL, vAddr, 3.U, true.B),
-					BitPat(LSU_SWR_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWR, vAddr, 3.U, true.B),
+					BitPat(LSU_SB_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, "b1".U << offset, true.B),
+					BitPat(LSU_SH_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, "b11".U << offset, true.B),
+					BitPat(LSU_SW_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, DontCare, vAddr, "b1111".U, true.B),
+					BitPat(LSU_SWL_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWL, vAddr, "b1111".U, true.B),
+					BitPat(LSU_SWR_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WWR, vAddr, "b1111".U, true.B),
 				)
 			)
 			back_reg.w_en := decoded_instr(0)
@@ -189,23 +192,30 @@ class LSU extends Module{
 			exec_reg.preRead := decoded_instr(5)
 			exec_reg.func := decoded_instr(6)
 			write_reg.addr := decoded_instr(7)
-			write_reg.len := decoded_instr(8)
+			write_reg.strb := decoded_instr(8)
 			write_reg.en := decoded_instr(9)
 			state_reg := LSU_READ
+            // when ((vAddr & 3.U) =/= 0.U){//address exception
+            //     io.exec_wb.valid := true.B
+			//     io.exec_wb.bits.w_addr := DontCare
+			//     io.exec_wb.bits.w_en := 0.U
+			//     io.exec_wb.bits.w_data := DontCare
+			//     state_reg := LSU_DIE
+            // }
 		}
 		is(LSU_READ){
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
 				dev.io.in.req.valid := true.B
-				dev.io.in.req.bits.addr :=read_reg.addr
+				dev.io.in.req.bits.addr :=read_reg.addr & (~3.U(32.W))
 				dev.io.in.req.bits.func := MX_RD
-				dev.io.in.req.bits.len := read_reg.len
+				dev.io.in.req.bits.len := 3.U
 				dev.io.in.resp.ready := true.B
 			}
 			when(dev.io.in.resp.fire()){
 				state_reg := LSU_CALC
-				exec_reg.preReadData := dev.io.in.resp.bits.data
+				exec_reg.preReadData := dev.io.in.resp.bits.data >> (read_reg.addr(1, 0) << 3)
 				dev.io.in.req.valid := false.B
 			}
 		}
@@ -238,10 +248,13 @@ class LSU extends Module{
 				back_reg.w_data := write_reg.w_data
 				state_reg := LSU_BACK
 			}.otherwise{
+                dev.io.in.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
 				dev.io.in.req.valid := true.B
-				dev.io.in.req.bits.addr :=write_reg.addr
+				dev.io.in.req.bits.addr := write_reg.addr & (~3.U(32.W))
+                //printf("%x\n", dev.io.in.req.bits.addr)
 				dev.io.in.req.bits.func := MX_WR
-				dev.io.in.req.bits.len := write_reg.len
+				dev.io.in.req.bits.strb := write_reg.strb
+                //printf("strb %x\n", write_reg.strb)
 				dev.io.in.resp.ready := true.B
 				back_reg.w_data := DontCare
 			}
@@ -463,5 +476,5 @@ class MDU extends Module{
     when(io.exec_wb.fire()){
         mdu_wb_valid := false.B
     }
-    printf(p"fire to wb: ${io.exec_wb.fire()}")
+    //printf(p"fire to wb: ${io.exec_wb.fire()}")
 }

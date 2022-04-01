@@ -20,7 +20,7 @@ extern "C" void device_io(unsigned char valid, int addr,
     int len, int data, char func, char wstrb, int *resp) {
   if (!valid) return;
   if((unsigned)addr > 0xa0000000U) addr = (unsigned)addr - 0xa0000000U;
-  if((unsigned)addr > 0x90000000U) addr = (unsigned)addr - 0x80000000U;
+  if((unsigned)addr > 0x80000000U) addr = (unsigned)addr - 0x80000000U;
   diff_top->device_io(addr, len, data, func, wstrb, resp);
 }
 
