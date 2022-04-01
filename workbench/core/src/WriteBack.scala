@@ -22,7 +22,7 @@ class WriteBack extends Module{
     val reg_alu_wb = RegEnableUse(io.alu_wb.bits, io.alu_wb.fire())
     val reg_bru_wb = RegEnable(io.bru_wb.bits, io.bru_wb.fire())
     val reg_lsu_wb = RegEnable(io.lsu_wb.bits, io.lsu_wb.fire())
-    printf(p"wb working\n\n")
+    // printf(p"wb working\n\n")
 
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U

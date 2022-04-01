@@ -32,7 +32,7 @@ class InstrFetch extends Module{
     }
     val wb_if_fire = RegNext(io.wb_if.fire() | reset.asBool())
     io.cycledone := wb_if_fire
-    printf(p"fetch working: ${wb_if_fire}\n")
+    // printf(p"fetch working: ${wb_if_fire}\n")
 
     val dev = Module(new SimDev)
     dev.io.clock := clock

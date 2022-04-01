@@ -43,13 +43,13 @@ class ALU extends Module{
     io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
     io.exec_wb.bits.w_en := isu_alu_fire
     io.exec_wb.valid := isu_alu_fire  // 1 cycle 
-    when (isu_alu_fire){
-    printf("=====EXEC=====\n")
-    printf(p"${io.isu_alu}\n")
-    //printf(p"${io.out}\n")
-    printf(p"${io.exec_wb}\n")
-    printf("==========\n")
-    }
+    // when (isu_alu_fire){
+    // // printf("=====EXEC=====\n")
+    // printf(p"${io.isu_alu}\n")
+    // //printf(p"${io.out}\n")
+    // printf(p"${io.exec_wb}\n")
+    // printf("==========\n")
+    // }
 }
 
 class BRU extends Module{
@@ -83,7 +83,6 @@ class BRU extends Module{
         BRU_JALR_OP -> true.B
     ))
     when(needJump){
-        printf("NEED JUMP\n")
         bruwb.w_pc_en := true.B
         bruwb.w_pc_addr := MuxLookup(r.bru_op, (r.pcNext.asSInt() + (r.offset << 2).asSInt()).asUInt(), Array(
             BRU_J_OP -> Cat(r.pcNext(31, 28), Cat(r.instr_index, "b00".U(2.W))),
@@ -99,17 +98,13 @@ class BRU extends Module{
         // }
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
-        printf(p"BRANCH WRITE TO 31 ${r.bru_op}\n")
         bruwb.w_en := true.B
         bruwb.w_addr := Mux(r.bru_op===BRU_JALR_OP, r.rd, 31.U)
         bruwb.w_data := r.pcNext + 4.U
     }
 //bruwb.w_pc_addr := 
     io.exec_wb.valid := isu_bur_fire
-    when(isu_bur_fire){
-        printf(p"BRU_OP: ${r}\n")
-        printf(p"BRUWB: ${bruwb}\n")
-    }
+
     io.exec_wb.bits <> bruwb
 }
 
@@ -234,7 +229,7 @@ class MDU extends Module{
     val dividor = Module(new Divider)
     
     io.isu_mdu.ready := true.B  // always ready 
-    val isu_mdu_fired = RegEnable(io.isu_mdu.fire() & ~reset.asBool(), io.isu_mdu.fire())
+    val isu_mdu_fired = RegEnable(io.isu_mdu.fire(), false.B, io.isu_mdu.fire())
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
     
     val mdu_wb_valid = RegInit(false.B)
@@ -260,6 +255,7 @@ class MDU extends Module{
         
         val multiplier_input = MuxLookup(isu_mdu_reg.mdu_op, VecInit((conf.mul_stages).U(3.W), DontCare, DontCare),
             Array(
+                MDU_MUL_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
                 MDU_MULT_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
                 MDU_MULTU_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asUInt(), isu_mdu_reg.rtData.asUInt()),
                 MDU_MADD_OP -> VecInit((conf.mul_stages-1).U(3.W), isu_mdu_reg.rsData.asSInt(), isu_mdu_reg.rtData.asSInt()),
@@ -291,12 +287,26 @@ class MDU extends Module{
         } .otherwise{
             mdu_wb_valid := false.B
         }
+        isu_mdu_fired := false.B
     }
+
     when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
-        mdu_wb_reg.w_en := false.B 
+        multiplier_delay_count := conf.mul_stages.U(3.W)
+        mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
         mdu_wb_valid := true.B
-        hi := multiplier.io.data_dout(63, 32)
-        lo := multiplier.io.data_dout(31, 0)
+        when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
+            hi := hi + multiplier.io.data_dout(63, 32)
+            lo := lo + multiplier.io.data_dout(31, 0)
+        } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
+            hi := hi - multiplier.io.data_dout(63, 32)
+            lo := lo - multiplier.io.data_dout(31, 0)
+        } elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
+            mdu_wb_reg.addr := isu_mdu_reg.rd
+            mdu_wb_reg.data := multiplier.io.data_dout(31, 0)
+        }.otherwise{
+            hi := multiplier.io.data_dout(63, 32)
+            lo := multiplier.io.data_dout(31, 0)
+        }
     }
     when(dividor.io.data_dout_valid){
         mdu_wb_reg.w_en := false.B 
