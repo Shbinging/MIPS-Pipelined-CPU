@@ -112,83 +112,218 @@ class LSU extends Module{
     }}
     io.exec_wb.bits := DontCare
     io.isu_lsu.ready := true.B
-    val isu_lsu_fire = RegNext(io.isu_lsu.fire()  & ~reset.asBool())
-    val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
-    val dev = Module(new SimDev)
-    dev.io.clock := clock
-    dev.io.reset := reset.asBool()
-    
-    dev.io.in.req.bits.is_cached := DontCare
-    dev.io.in.req.bits.strb := DontCare
-    dev.io.in.req.bits.data := DontCare
-    dev.io.in.req.valid := isu_lsu_fire //XXX:need modify when cycling
-    dev.io.in.resp.ready := true.B // & ~reset.asBool()
-
-    val vAddr = WireInit((r.imm.asSInt() + r.rsData.asSInt()).asUInt())
-    val shiftPos = VecInit(0.U, 8.U, 16.U, 24.U, 32.U)
-    val index = vAddr(1, 0).asUInt()
-    dev.io.in.req.bits.addr := vAddr
-    val resp_fire = RegNext(dev.io.in.resp.fire().asBool())
-    val resp_data_reg = RegEnable(dev.io.in.resp.bits, dev.io.in.resp.fire())
-    when(VecInit(LSU_LBU_OP, LSU_LB_OP, LSU_LH_OP, LSU_LWL_OP, LSU_LWR_OP, LSU_LW_OP).contains(r.lsu_op)){
-        val decoded_instr = ListLookup(r.lsu_op, List(MX_RD, 0.U), Array(
-            BitPat(LSU_LBU_OP)->List(MX_RD, 0.U),
-            BitPat(LSU_LB_OP)->List(MX_RD, 0.U),
-            BitPat(LSU_LH_OP)->List(MX_RD, 1.U),
-            BitPat(LSU_LWL_OP)->List(MX_RD, 3.U),
-            BitPat(LSU_LWR_OP)->List(MX_RD, 3.U),
-            BitPat(LSU_LW_OP)->List(MX_RD, 3.U),
-        ))
-        dev.io.in.req.bits.func := decoded_instr(0)
-        dev.io.in.req.bits.len := decoded_instr(1)
-        when(resp_fire){
-            io.exec_wb.bits.w_en := "b1111".U
-            io.exec_wb.bits.w_addr := r.rt
-            io.exec_wb.bits.w_data := MuxLookup(r.lsu_op, 0.U, Seq(
-                LSU_LB_OP->((resp_data_reg.data & 0xff.U).asTypeOf(SInt(32.W))).asUInt(),
-                LSU_LBU_OP->(resp_data_reg.data & 0xff.U).asUInt(),
-                LSU_LH_OP -> ((resp_data_reg.data &0xffff.U).asTypeOf(SInt(32.W))).asUInt(),
-                LSU_LHU_OP -> (resp_data_reg.data &0xffff.U).asUInt(),
-                LSU_LW_OP -> ((resp_data_reg.data).asTypeOf(SInt(32.W))).asUInt(),
-                LSU_LWL_OP -> ((resp_data_reg.data) << shiftPos(3.U - index)),
-                LSU_LWR_OP -> ((resp_data_reg.data) >> shiftPos(index)),
-            )).asTypeOf(UInt(32.W))
-            when(r.lsu_op === LSU_LWL_OP){
-                    val shiftMask1 = VecInit("b1000".U, "b1100".U, "b1110".U, "b1111".U)
-                    io.exec_wb.bits.w_en := shiftMask1(index)
-            }
-            when(r.lsu_op === LSU_LWR_OP){
-                val shiftMask2 = VecInit("b1111".U, "b0111".U, "b0011".U, "b0001".U)
-                io.exec_wb.bits.w_en := shiftMask2(index)
-            }   
-        }.otherwise{
-            dev.io.in.req.bits.func := MX_WR
-            dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
-                LSU_SB_OP -> r.rtData(7, 0),
-                LSU_SH_OP -> r.rtData(15, 0),
-                LSU_SW_OP -> r.rtData,
-                LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
-                LSU_SWR_OP -> (r.rsData >> shiftPos(index))
-            ))
-            dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
-                LSU_SB_OP -> 0.U,
-                LSU_SH_OP -> 1.U,
-                LSU_SW_OP -> 3.U,
-                LSU_SWL_OP -> 3.U,
-                LSU_SWR_OP -> 3.U
-            ))
-            when(r.lsu_op === LSU_SWL_OP){
-                dev.io.in.req.bits.len := index
-            }
-            when(r.lsu_op === LSU_SWR_OP){
-                dev.io.in.req.bits.len := 3.U - index
-                dev.io.in.req.bits.addr := vAddr + index
-            }
-            io.exec_wb.bits.w_en := 0.U
-        }
+    val isu_lsu_fire = Reg(Bool())
+    val state_reg = Reg(UInt(STATUS_WIDTH.W))
+    when(reset.asBool()){
+        isu_lsu_fire := false.B
+        state_reg := LSU_DIE
     }
-    io.exec_wb.valid := resp_fire & ~reset.asBool()
+
+    when(io.isu_lsu.fire()){
+        isu_lsu_fire := true.B
+        state_reg := LSU_DECODE
+    }
+
+    val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
+	val back_reg = Reg(new Bundle{
+		val w_en = UInt(4.W)
+    	val w_addr = UInt(REG_SZ.W)
+		val w_data = UInt(conf.data_width.W)
+		})
+	val read_reg = Reg(new Bundle{
+		val addr = UInt(conf.data_width.W)
+		val len = UInt(2.W)
+		val en = Bool()
+	})
+	val exec_reg = Reg(new Bundle{
+		val preRead = Bool()
+		val func = UInt(3.W)
+		val preReadData = UInt(conf.data_width.W)//need calc
+	})
+	val write_reg = Reg(new Bundle{
+		val addr = UInt(conf.data_width.W)
+		val len = UInt(2.W)
+		val en = Bool()
+		val w_data = UInt(conf.data_width.W)
+	})
+	val dev = Module(new SimDev)
+	dev.io.clock := clock
+    dev.io.reset := reset.asBool() 
+    dev.io.in.req.bits.is_cached := DontCare
+    dev.io.in.req.bits.strb := "b1111".U
+    dev.io.in.req.bits.data := DontCare
+    dev.io.in.req.valid := false.B
+    dev.io.in.resp.ready := false.B
+	io.exec_wb.valid := false.B
+	switch(state_reg){
+		is(LSU_DIE){
+			io.exec_wb.valid:=false.B
+		}
+		is(LSU_DECODE){
+			val vAddr = Wire(UInt(32.W))
+			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
+			val rt = Wire(UInt(5.W))
+			rt := r.rt
+			val decoded_instr = ListLookup(r.lsu_op, List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_B, DontCare, DontCare, false.B), Array(
+					BitPat(LSU_LB_OP)->List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_B, DontCare, DontCare, false.B),
+					BitPat(LSU_LBU_OP)->List("b1111".U(4.W), rt, vAddr, 0.U, true.B, true.B, LSU_FUNC_BU, DontCare, DontCare, false.B),
+					BitPat(LSU_LH_OP)->List("b1111".U(4.W), rt, vAddr, 1.U, true.B, true.B, LSU_FUNC_H, DontCare, DontCare, false.B),
+					BitPat(LSU_LHU_OP)->List("b1111".U(4.W), rt, vAddr, 1.U, true.B, true.B, LSU_FUNC_HU, DontCare, DontCare, false.B),
+					BitPat(LSU_LW_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WU, DontCare, DontCare, false.B),
+					BitPat(LSU_LWL_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WL, DontCare, DontCare, false.B),
+					BitPat(LSU_LWR_OP)->List("b1111".U(4.W), rt, vAddr, 3.U, true.B, true.B, LSU_FUNC_WR, DontCare, DontCare, false.B),
+					BitPat(LSU_SB_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_BU, vAddr, 0.U, true.B),
+					BitPat(LSU_SH_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_HU, vAddr, 1.U, true.B),
+					BitPat(LSU_SW_OP)->List(0.U(4.W), DontCare, DontCare, DontCare, false.B, false.B, LSU_FUNC_WU, vAddr, 3.U, true.B),
+					BitPat(LSU_SWL_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WL, vAddr, 3.U, true.B),
+					BitPat(LSU_SWR_OP)->List(0.U(4.W), DontCare, vAddr, 3.U, true.B, true.B, LSU_FUNC_WR, vAddr, 3.U, true.B),
+				)
+			)
+			back_reg.w_en := decoded_instr(0)
+			back_reg.w_addr := decoded_instr(1)
+			read_reg.addr := decoded_instr(2)
+			read_reg.len := decoded_instr(3)
+			read_reg.en := decoded_instr(4)
+			exec_reg.preRead := decoded_instr(5)
+			exec_reg.func := decoded_instr(6)
+			write_reg.addr := decoded_instr(7)
+			write_reg.len := decoded_instr(8)
+			write_reg.en := decoded_instr(9)
+			state_reg := LSU_READ
+		}
+		is(LSU_READ){
+			when(!read_reg.en){
+				state_reg := LSU_CALC
+			}.otherwise{
+				dev.io.in.req.valid := true.B
+				dev.io.in.req.bits.addr :=read_reg.addr
+				dev.io.in.req.bits.func := MX_RD
+				dev.io.in.req.bits.len := read_reg.len
+				dev.io.in.resp.ready := true.B
+			}
+			when(dev.io.in.resp.fire()){
+				state_reg := LSU_CALC
+				exec_reg.preReadData := dev.io.in.resp.bits.data
+				dev.io.in.req.valid := false.B
+			}
+		}
+		is (LSU_CALC){
+			when(exec_reg.preRead){
+				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
+				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
+				val index = WireInit(write_reg.addr(1, 0).asUInt())
+				write_reg.w_data := Mux1H(Seq(
+					(exec_reg.func === LSU_FUNC_B)->(exec_reg.preReadData(7, 0).asTypeOf(SInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_BU)->(exec_reg.preReadData(7, 0).asTypeOf(UInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_H)->(exec_reg.preReadData(15, 0).asTypeOf(SInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_HU)->(exec_reg.preReadData(15, 0).asTypeOf(UInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_W)->(exec_reg.preReadData.asTypeOf(SInt(32.W)).asUInt()),
+					(exec_reg.func === LSU_FUNC_WU)->((exec_reg.preReadData << ((~index) << 3)) | ((r.rtData) & shiftMask1(index))).asTypeOf(UInt(32.W)),
+					(exec_reg.func === LSU_FUNC_WL)->((exec_reg.preReadData >> (index << 3)) | (r.rtData & shiftMask2(index))).asTypeOf(UInt(32.W)),
+				)
+				).asTypeOf(UInt(32.W))
+			}.otherwise{
+				write_reg.w_data := r.rtData
+			}
+			state_reg := LSU_WRITE
+		}
+		is (LSU_WRITE){
+			when(!write_reg.en){
+				back_reg.w_data := write_reg.w_data
+				state_reg := LSU_BACK
+			}.otherwise{
+				dev.io.in.req.valid := true.B
+				dev.io.in.req.bits.addr :=write_reg.addr
+				dev.io.in.req.bits.func := MX_WR
+				dev.io.in.req.bits.len := write_reg.len
+				dev.io.in.resp.ready := true.B
+				back_reg.w_data := DontCare
+			}
+			when(dev.io.in.resp.fire()){
+				state_reg := LSU_BACK
+				dev.io.in.req.valid := false.B
+			}
+		}
+		is (LSU_BACK){
+			io.exec_wb.valid := true.B
+			io.exec_wb.bits.w_addr := back_reg.w_addr
+			io.exec_wb.bits.w_en := back_reg.w_en
+			io.exec_wb.bits.w_data := back_reg.w_data
+			state_reg := LSU_DIE
+		}
+	}
 }
+
+
+    // val vAddr = WireInit((r.imm.asSInt() + r.rsData.asSInt()).asUInt())
+    // val shiftPos = VecInit(0.U, 8.U, 16.U, 24.U, 32.U)
+    // val index = vAddr(1, 0).asUInt()
+    // dev.io.in.req.bits.addr := vAddr
+    // val resp_fire = RegNext(dev.io.in.resp.fire().asBool())
+    // val resp_data_reg = RegEnable(dev.io.in.resp.bits, dev.io.in.resp.fire())
+    // when(VecInit(LSU_LBU_OP, LSU_LB_OP, LSU_LH_OP, LSU_LWL_OP, LSU_LWR_OP, LSU_LW_OP).contains(r.lsu_op)){
+    //     val decoded_instr = ListLookup(r.lsu_op, List(MX_RD, 0.U), Array(
+    //         BitPat(LSU_LBU_OP)->List(MX_RD, 0.U),
+    //         BitPat(LSU_LB_OP)->List(MX_RD, 0.U),
+    //         BitPat(LSU_LH_OP)->List(MX_RD, 1.U),
+    //         BitPat(LSU_LWL_OP)->List(MX_RD, 3.U),
+    //         BitPat(LSU_LWR_OP)->List(MX_RD, 3.U),
+    //         BitPat(LSU_LW_OP)->List(MX_RD, 3.U),
+    //     ))
+    //     dev.io.in.req.bits.func := decoded_instr(0)
+    //     dev.io.in.req.bits.len := decoded_instr(1)
+    //     // when(resp_fire){
+
+    //     // }
+    // //     when(resp_fire){
+    // //         io.exec_wb.bits.w_en := "b1111".U
+    // //         io.exec_wb.bits.w_addr := r.rt
+    // //         val shiftMask1 = VecInit("0xffffff".U, "0xffff".U, "0xff".U, "0x0".U)
+    // //         io.exec_wb.bits.w_data := MuxLookup(r.lsu_op, 0.U, Seq(
+    // //             LSU_LB_OP->((resp_data_reg.data & 0xff.U).asTypeOf(SInt(32.W))).asUInt(),
+    // //             LSU_LBU_OP->(resp_data_reg.data & 0xff.U).asUInt(),
+    // //             LSU_LH_OP -> ((resp_data_reg.data &0xffff.U).asTypeOf(SInt(32.W))).asUInt(),
+    // //             LSU_LHU_OP -> (resp_data_reg.data &0xffff.U).asUInt(),
+    // //             LSU_LW_OP -> ((resp_data_reg.data).asTypeOf(SInt(32.W))).asUInt(),
+    // //             LSU_LWL_OP -> (((resp_data_reg.data) << (~index << 3)) | (shiftMask1(index) & r.rt)),
+    // //             LSU_LWR_OP -> ((resp_data_reg.data) >> (index << 3)),
+    // //             ).asTypeOf(UInt(32.W))
+    // //         when(r.lsu_op === LSU_LWR_OP){
+    // //             val shiftMask2 = VecInit("b1111".U, "b0111".U, "b0011".U, "b0001".U)
+    // //             io.exec_wb.bits.w_en := shiftMask2(index)
+    // //         }   
+    // //     }
+    // }.otherwise{
+    //         dev.io.in.req.bits.func := MX_WR
+    //         dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
+    //             LSU_SB_OP -> r.rtData(7, 0),
+    //             LSU_SH_OP -> r.rtData(15, 0),
+    //             LSU_SW_OP -> r.rtData,
+    //             LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
+    //             LSU_SWR_OP -> (r.rsData >> shiftPos(index))
+    //         ))
+    //         dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
+    //             LSU_SB_OP -> 0.U,
+    //             LSU_SH_OP -> 1.U,
+    //             LSU_SW_OP -> 3.U,
+    //             LSU_SWL_OP -> 3.U,
+    //             LSU_SWR_OP -> 3.U
+    //         ))
+    //         when(r.lsu_op === LSU_SWL_OP){
+    //             dev.io.in.req.bits.len := index
+    //         }
+    //         when(r.lsu_op === LSU_SWR_OP){
+    //             dev.io.in.req.bits.len := 3.U - index
+    //             dev.io.in.req.bits.addr := vAddr + index
+    //         }
+    //         io.exec_wb.bits.w_en := 0.U
+    
+    // }
+    // when(resp_fire){
+    //     isu_lsu_fire := 0.U
+    // }
+    // io.exec_wb.valid := resp_fire & ~reset.asBool()
+
 
 class Divider extends Module {
     val io = IO(Flipped(new DividerIO))
