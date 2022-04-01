@@ -485,6 +485,6 @@ class MDU extends Module{
         mdu_wb_valid := false.B
     }
     printf(p"hi: ${hi}, lo: ${lo}\n")
-    printf("====\n")
+    printf("====\n")   
     // printf(p"fire to wb: ${io.exec_wb.fire()}, MUL: ${multiplier_delay_count}\n")
 }
