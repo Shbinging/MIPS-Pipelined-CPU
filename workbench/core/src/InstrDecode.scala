@@ -51,12 +51,15 @@ class InstrDecode extends Module{
             SRAV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRA_OP),
             SRLV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SRL_OP),
             SLLV -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_SLL_OP),
-            
             ADDI -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_ADD_OP),
             ADDIU-> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, ALU_ID, ALU_ADDU_OP),
             ANDI -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_AND_OP),
             ORI  -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_OR_OP),
             XORI -> List(rt, RS_SEL, IMM_SEL, ZERO_EXT_SEL, ALU_ID, ALU_XOR_OP),
+            SEB  -> List(rd, DontCare, RT_SEL, DontCare, ALU_ID, ALU_SEB_OP),
+            SEH  -> List(rd, DontCare, RT_SEL, DontCare, ALU_ID, ALU_SEH_OP),
+            WSBH -> List(rd, DontCare, RT_SEL, DontCare, ALU_ID, ALU_WSBH_OP),
+            INS  -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_INS_OP),
             // TODO: MOVN 
             // TODO: MOVZ 
 

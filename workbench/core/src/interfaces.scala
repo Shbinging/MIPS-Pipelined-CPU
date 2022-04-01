@@ -68,6 +68,7 @@ class ISU_ALU extends Bundle{
     val alu_op = Output(UInt(OPCODE_WIDTH.W))
     val operand_1 = Output(UInt(conf.data_width.W))
     val operand_2 = Output(UInt(conf.data_width.W))
+    val imm = Output(UInt(IMM_SZ.W))
     val rd_addr = Output(UInt(REG_SZ.W))
 }
 
