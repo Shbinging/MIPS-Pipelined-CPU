@@ -14,11 +14,17 @@ class ALU extends Module{
     }}
     io.isu_alu.ready := true.B
     val isu_alu_fire = RegNext(io.isu_alu.fire()  & ~reset.asBool())
-    val r = RegEnableUse(io.isu_alu.bits, io.isu_alu.fire())
+    val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
     val ALU_op = WireInit(r.alu_op)
     val ALU_out = Wire(UInt(32.W))  
+    
+    // for ins
+    val msb = r.imm(15, 11)
+    val lsb = r.imm(10, 6)
+    val b_mask = ~((("h_80000000".U(32.W).asSInt()>>(31.U(5.W)-lsb))<<(31.U(5.W)-msb).asUInt)>>(31.U(5.W)-msb))
+    
     ALU_out := MuxCase(0.U, Array(
         (r.alu_op === ALU_ADDU_OP)-> (A_in + B_in),
         (r.alu_op === ALU_ADD_OP)-> (A_in.asSInt() + B_in.asSInt()).asUInt(),
@@ -34,6 +40,10 @@ class ALU extends Module{
         (r.alu_op === ALU_SUBU_OP) -> (A_in - B_in),
         (r.alu_op === ALU_SUB_OP) -> (A_in.asSInt() - B_in.asSInt()).asUInt(),
         (r.alu_op === ALU_XOR_OP) -> (A_in ^ B_in),
+        (r.alu_op === ALU_SEB_OP) -> Cat(Fill(24, B_in(7)), B_in(7, 0)),
+        (r.alu_op === ALU_SEH_OP) -> Cat(Fill(16, B_in(15)), B_in(15, 0)),
+        (r.alu_op === ALU_WSBH_OP)-> (Cat(Cat(B_in(23, 16), B_in(31, 24)), Cat(B_in(7, 0), B_in(15, 8)))),
+        // (r.alu_op === ALU_INS_OP) -> (B_in&b_mask + (A_in<<(31.U(5.W)-msb+lsb))>>(31.U(5.W)-msb))
     ))(31, 0)
     //io.out.ALU_out := ALU_out
     //io.out.Overflow_out := false.B //XXX:modify when need exception

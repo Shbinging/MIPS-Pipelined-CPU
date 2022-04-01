@@ -32,6 +32,7 @@ class ISU extends Module {
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
             iaBundle := DontCare
+            iaBundle.imm := reg_id_isu.imm
             iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, io.gpr_data.rs_data, reg_id_isu.shamt)
             iaBundle.alu_op := reg_id_isu.op
             iaBundle.rd_addr := reg_id_isu.rd_addr
