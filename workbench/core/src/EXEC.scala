@@ -120,7 +120,13 @@ class LSU extends Module{
     }}
     io.exec_wb.bits := DontCare
     io.isu_lsu.ready := true.B
-    val isu_lsu_fire = RegNext(io.isu_lsu.fire()  & ~reset.asBool())
+    val isu_lsu_fire = Reg(Bool())
+    when(reset.asBool()){
+        isu_lsu_fire := false.B
+    }
+    when(io.isu_lsu.fire()){
+        isu_lsu_fire := true.B
+    }
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val dev = Module(new SimDev)
     dev.io.clock := clock
@@ -152,24 +158,22 @@ class LSU extends Module{
         when(resp_fire){
             io.exec_wb.bits.w_en := "b1111".U
             io.exec_wb.bits.w_addr := r.rt
+            val shiftMask1 = VecInit("0xffffff".U, "0xffff".U, "0xff".U, "0x0".U)
             io.exec_wb.bits.w_data := MuxLookup(r.lsu_op, 0.U, Seq(
                 LSU_LB_OP->((resp_data_reg.data & 0xff.U).asTypeOf(SInt(32.W))).asUInt(),
                 LSU_LBU_OP->(resp_data_reg.data & 0xff.U).asUInt(),
                 LSU_LH_OP -> ((resp_data_reg.data &0xffff.U).asTypeOf(SInt(32.W))).asUInt(),
                 LSU_LHU_OP -> (resp_data_reg.data &0xffff.U).asUInt(),
                 LSU_LW_OP -> ((resp_data_reg.data).asTypeOf(SInt(32.W))).asUInt(),
-                LSU_LWL_OP -> ((resp_data_reg.data) << shiftPos(3.U - index)),
-                LSU_LWR_OP -> ((resp_data_reg.data) >> shiftPos(index)),
+                LSU_LWL_OP -> (((resp_data_reg.data) << (~index << 3)) | (shiftMask1(index) & r.rt))
+                LSU_LWR_OP -> ((resp_data_reg.data) >> (index << 3)
             )).asTypeOf(UInt(32.W))
-            when(r.lsu_op === LSU_LWL_OP){
-                    val shiftMask1 = VecInit("b1000".U, "b1100".U, "b1110".U, "b1111".U)
-                    io.exec_wb.bits.w_en := shiftMask1(index)
-            }
             when(r.lsu_op === LSU_LWR_OP){
                 val shiftMask2 = VecInit("b1111".U, "b0111".U, "b0011".U, "b0001".U)
                 io.exec_wb.bits.w_en := shiftMask2(index)
             }   
-        }.otherwise{
+        }    
+    }.otherwise{
             dev.io.in.req.bits.func := MX_WR
             dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
                 LSU_SB_OP -> r.rtData(7, 0),
@@ -193,7 +197,10 @@ class LSU extends Module{
                 dev.io.in.req.bits.addr := vAddr + index
             }
             io.exec_wb.bits.w_en := 0.U
-        }
+    
+    }
+    when(resp_fire){
+        isu_lsu_fire := 0.U
     }
     io.exec_wb.valid := resp_fire & ~reset.asBool()
 }
