@@ -346,8 +346,8 @@ class LSU extends Module{
 
 class Divider extends Module {
     val io = IO(Flipped(new DividerIO))
-    val dividend = io.data_dividend_bits
-    val divisor = io.data_divisor_bits
+    val dividend = (io.data_dividend_bits).asSInt
+    val divisor = (io.data_divisor_bits).asSInt
     val quotient = (dividend / divisor).asUInt
     val remainder = (dividend % divisor).asUInt
     require(quotient.getWidth == 40)
@@ -389,7 +389,7 @@ class MDU extends Module{
     val hi = RegInit(0.U(32.W))
     val lo = RegInit(0.U(32.W))
     
-    val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 8
+    val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 7
 
 
     when(isu_mdu_fired){
@@ -404,29 +404,31 @@ class MDU extends Module{
         dividor.io.data_divisor_bits := Cat(
             Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rtData(31)), 0.U(8.W)),
             isu_mdu_reg.rtData
-        )        
-
-        multiplier_delay_count := Mux(
-            VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op),
-            (conf.mul_stages).U(3.W), (conf.mul_stages-1).U(3.W)
         )
+        when(dividor.io.data_dividend_valid & dividor.io.data_divisor_valid){
+            printf(p"${dividor.io.data_dividend_bits} / ${dividor.io.data_divisor_bits}\n")
+        }
+
+        val is_mul = VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)
+        multiplier_delay_count := Mux(is_mul, (conf.mul_stages-1).U(3.W), (conf.mul_stages).U(3.W))
         multiplier.io.data_a := Cat(
-            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), isu_mdu_reg.rsData(31), 0.U(1.W)),
+            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rsData(31)),
             isu_mdu_reg.rsData
         )
         multiplier.io.data_b := Cat(
-            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), isu_mdu_reg.rtData(31), 0.U(1.W)),
+            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rtData(31)),
             isu_mdu_reg.rtData
         )
         
         mdu_wb_reg.w_en := VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)
         mdu_wb_reg.w_addr := isu_mdu_reg.rd 
         mdu_wb_reg.w_data := Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)
-
+        printf(p"mdu_wb_reg.w_data: ${ Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)}\n")
         hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
         lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
 
         when(VecInit(MDU_MTHI_OP, MDU_MTLO_OP, MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
+            printf("MDU_WB_VALID because MT, MF\n")
             mdu_wb_valid := true.B
         } .otherwise{
             mdu_wb_valid := false.B
@@ -443,13 +445,16 @@ class MDU extends Module{
     when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
         multiplier_delay_count := conf.mul_stages.U(3.W)
         mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
+        printf("MDU_WB_VALID because MULTIPLIER DONE\n")
         mdu_wb_valid := true.B
         when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
-            hi := hi + multiplier.io.data_dout(63, 32)
-            lo := lo + multiplier.io.data_dout(31, 0)
+            val hi_lo = Cat(hi, lo) + multiplier.io.data_dout(63, 0)
+            hi := hi_lo(63, 32)
+            lo := hi_lo(31, 0)
         } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
-            hi := hi - multiplier.io.data_dout(63, 32)
-            lo := lo - multiplier.io.data_dout(31, 0)
+            val hi_lo = Cat(hi, lo) - multiplier.io.data_dout(63, 0)
+            hi := hi_lo(63, 32)
+            lo := hi_lo(31, 0)
         } .elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
             mdu_wb_reg.w_addr := isu_mdu_reg.rd
             mdu_wb_reg.w_data := multiplier.io.data_dout(31, 0)
@@ -461,9 +466,12 @@ class MDU extends Module{
     when(dividor.io.data_dout_valid){
         mdu_wb_reg.w_en := false.B 
         mdu_wb_valid := true.B
-        hi := dividor.io.data_dout_bits(71, 40)
-        lo := dividor.io.data_dout_bits(31, 0)  
-        printf(p"DIV: ${dividor.io.data_dout_bits(71, 40)} - ${ dividor.io.data_dout_bits(31, 0)}\n")
+        // when(isu_mdu_reg.rtData =/= 0.U){
+        lo := dividor.io.data_dout_bits(71, 40)
+        hi := dividor.io.data_dout_bits(31, 0)  
+        // }
+        printf("MDU_WB_VALID because DIVIDOR DONE\n")
+        printf(p"DIV: ${dividor.io.data_dout_bits(71, 40)} - ${ dividor.io.data_dout_bits(31, 0)} to \n")
     }
 
     when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
@@ -476,5 +484,7 @@ class MDU extends Module{
     when(io.exec_wb.fire()){
         mdu_wb_valid := false.B
     }
-    //printf(p"fire to wb: ${io.exec_wb.fire()}")
+    printf(p"hi: ${hi}, lo: ${lo}\n")
+    printf("====\n")
+    // printf(p"fire to wb: ${io.exec_wb.fire()}, MUL: ${multiplier_delay_count}\n")
 }
