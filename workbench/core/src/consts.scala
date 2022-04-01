@@ -161,6 +161,22 @@ trait ExecUnitIndices {
   val LSU_SWL_OP   = "b1001".U(OPCODE_WIDTH.W)
   val LSU_SWR_OP   = "b1010".U(OPCODE_WIDTH.W)
   val LSU_LHU_OP =  "b1011".U(OPCODE_WIDTH.W)
+
+  val STATUS_WIDTH = 3
+  val LSU_DIE = "b000".U(STATUS_WIDTH.W)
+  val LSU_DECODE = "b001".U(STATUS_WIDTH.W)
+  val LSU_READ = "b010".U(STATUS_WIDTH.W)
+  val LSU_CALC = "b011".U(STATUS_WIDTH.W)
+  val LSU_WRITE = "b100".U(STATUS_WIDTH.W)
+  val LSU_BACK = "b101".U(STATUS_WIDTH.W)
+  val LSU_FUNC_B = "b000".U(3.W)
+  val LSU_FUNC_BU = "b001".U(3.W)
+  val LSU_FUNC_H = "b010".U(3.W)
+  val LSU_FUNC_HU = "b011".U(3.W)
+  val LSU_FUNC_W = "b100".U(3.W)
+  val LSU_FUNC_WU = "b101".U(3.W)
+  val LSU_FUNC_WL = "b110".U(3.W)
+  val LSU_FUNC_WR = "b111".U(3.W)
   //MDU
   val MDU_DIV_OP = "b0000".U(OPCODE_WIDTH.W)
   val MDU_DIVU_OP = "b0001".U(OPCODE_WIDTH.W)
