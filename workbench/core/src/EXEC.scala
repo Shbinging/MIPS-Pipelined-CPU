@@ -20,11 +20,15 @@ class ALU extends Module{
     val ALU_op = WireInit(r.alu_op)
     val ALU_out = Wire(UInt(32.W))  
     
-    // for ins
+    // for ins and ext
     val msb = r.imm(15, 11).asUInt
     val lsb = r.imm(10, 6).asUInt
     val a_mask = (("h_ffff_ffff".U(32.W))>>(31.U(5.W)-msb+lsb)).asUInt()(31, 0)
     val b_mask = (~((a_mask<<lsb))).asUInt()(31, 0)
+
+    // for rot
+    val rot = Cat(B_in, 0.U(32.W)) >> A_in
+
     ALU_out := MuxCase(0.U, Array(
         (r.alu_op === ALU_ADDU_OP)-> (A_in + B_in),
         (r.alu_op === ALU_ADD_OP)-> (A_in.asSInt() + B_in.asSInt()).asUInt(),
@@ -37,6 +41,7 @@ class ALU extends Module{
         (r.alu_op === ALU_SLT_OP) -> (Mux((A_in.asSInt() < B_in.asSInt()).asBool(), 1.U, 0.U)),
         (r.alu_op === ALU_SRA_OP) -> (B_in.asSInt() >> A_in(4, 0).asUInt()).asUInt(),
         (r.alu_op === ALU_SRL_OP) -> (B_in >> A_in(4, 0).asUInt()),
+        (r.alu_op === ALU_ROTR_OP) -> (rot(63, 32) + rot(31, 0)),
         (r.alu_op === ALU_SUBU_OP) -> (A_in - B_in),
         (r.alu_op === ALU_SUB_OP) -> (A_in.asSInt() - B_in.asSInt()).asUInt(),
         (r.alu_op === ALU_XOR_OP) -> (A_in ^ B_in),
