@@ -29,6 +29,19 @@ class ALU extends Module{
     // for rot
     val rot = Cat(B_in, 0.U(32.W)) >> A_in
 
+    // for clz clo
+    val A_in_Count = Mux(r.alu_op==ALU_CLO_OP, ~A_in, A_in)
+    val tocount = Wire(Vec(32, Bool()))
+    val count = Wire(Vec(32, UInt(6.W)))
+    for(i <- 31 to 0 by -1){
+        if(i==31) tocount(i) := (A_in_Count(i)===0.U)
+        else tocount(i) := tocount(i+1) & (A_in_Count(i)===0.U)
+    }
+    for(i <- 31 to 0 by -1){
+        if(i==31) count(i) := Mux(tocount(i), 1.U, 0.U)
+        else count(i) := Mux(tocount(i), count(i+1)+1.U, count(i+1))
+    }
+
     ALU_out := MuxCase(0.U, Array(
         (r.alu_op === ALU_ADDU_OP)-> (A_in + B_in),
         (r.alu_op === ALU_ADD_OP)-> (A_in.asSInt() + B_in.asSInt()).asUInt(),
@@ -49,7 +62,9 @@ class ALU extends Module{
         (r.alu_op === ALU_SEH_OP) -> Cat(Fill(16, B_in(15)), B_in(15, 0)),
         (r.alu_op === ALU_WSBH_OP)-> (Cat(Cat(B_in(23, 16), B_in(31, 24)), Cat(B_in(7, 0), B_in(15, 8)))),
         (r.alu_op === ALU_INS_OP) -> (((A_in&a_mask)<<lsb).asUInt()(31, 0) + (B_in&b_mask)),
-        (r.alu_op === ALU_EXT_OP) -> ((A_in>>lsb) & ("h_ffff_ffff".U(32.W)>>(31.U - msb)))
+        (r.alu_op === ALU_EXT_OP) -> ((A_in>>lsb) & ("h_ffff_ffff".U(32.W)>>(31.U - msb))),
+        (r.alu_op === ALU_CLO_OP) -> count(0),
+        (r.alu_op === ALU_CLZ_OP) -> count(0)
     ))(31, 0)
     //io.out.ALU_out := ALU_out
     //io.out.Overflow_out := false.B //XXX:modify when need exception
