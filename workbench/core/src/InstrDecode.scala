@@ -112,7 +112,9 @@ class InstrDecode extends Module{
     io.id_isu.bits.op := decoded_instr(5)
     
     io.id_isu.valid := if_id_fire  & ~reset.asBool()   // TODO: complete in 1 cycle
-
+    // when(if_id_fire){
+    //     printf("instr:%x\n", io.if_id.bits.instr)
+    // }
     // when(io.id_isu.valid){
     //     printf(p"xxx${if_id_reg}")
     // }

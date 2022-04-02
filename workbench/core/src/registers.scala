@@ -48,7 +48,7 @@ class GPR extends Module {
             gprs(io.write_in.addr)(3) := io.write_in.data(31, 24)
         }
     }
-
+    //printf("readin %x %x\n", io.read_in.rs_addr, io.read_in.rt_addr)
     for( i <- 0 to 31){
         io.gpr_commit(i) := gprs(i).asUInt()
     }

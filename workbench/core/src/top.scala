@@ -20,7 +20,6 @@ class verilator_top extends Module {
     global_time := global_time + 1.U 
     // printf(p"\n============\nGlobal Time: ${global_time}\n")
     val gprs = Module(new GPR)
-    
     val instr_fetch = Module(new InstrFetch)
     val instr_decode = Module(new InstrDecode)
     val instr_shoot = Module(new ISU )
