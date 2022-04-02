@@ -30,7 +30,7 @@ class ALU extends Module{
     val rot = Cat(B_in, 0.U(32.W)) >> A_in
 
     // for clz clo
-    val A_in_Count = Mux(r.alu_op==ALU_CLO_OP, ~A_in, A_in)
+    val A_in_Count = Mux(r.alu_op===ALU_CLO_OP, ~A_in, A_in)
     val tocount = Wire(Vec(32, Bool()))
     val count = Wire(Vec(32, UInt(6.W)))
     for(i <- 31 to 0 by -1){
