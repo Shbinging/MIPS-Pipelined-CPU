@@ -21,10 +21,10 @@ class ALU extends Module{
     val ALU_out = Wire(UInt(32.W))  
     
     // for ins
-    val msb = r.imm(15, 11)
-    val lsb = r.imm(10, 6)
-    val b_mask = ~((("h_80000000".U(32.W).asSInt()>>(31.U(5.W)-lsb))<<(31.U(5.W)-msb).asUInt)>>(31.U(5.W)-msb))
-    
+    val msb = r.imm(15, 11).asUInt
+    val lsb = r.imm(10, 6).asUInt
+    val a_mask = (("h_ffff_ffff".U(32.W))>>(31.U(5.W)-msb+lsb)).asUInt()(31, 0)
+    val b_mask = (~((a_mask<<lsb))).asUInt()(31, 0)
     ALU_out := MuxCase(0.U, Array(
         (r.alu_op === ALU_ADDU_OP)-> (A_in + B_in),
         (r.alu_op === ALU_ADD_OP)-> (A_in.asSInt() + B_in.asSInt()).asUInt(),
@@ -43,7 +43,7 @@ class ALU extends Module{
         (r.alu_op === ALU_SEB_OP) -> Cat(Fill(24, B_in(7)), B_in(7, 0)),
         (r.alu_op === ALU_SEH_OP) -> Cat(Fill(16, B_in(15)), B_in(15, 0)),
         (r.alu_op === ALU_WSBH_OP)-> (Cat(Cat(B_in(23, 16), B_in(31, 24)), Cat(B_in(7, 0), B_in(15, 8)))),
-        // (r.alu_op === ALU_INS_OP) -> (B_in&b_mask + (A_in<<(31.U(5.W)-msb+lsb))>>(31.U(5.W)-msb))
+        (r.alu_op === ALU_INS_OP) -> (((A_in&a_mask)<<lsb).asUInt()(31, 0) + (B_in&b_mask))
     ))(31, 0)
     //io.out.ALU_out := ALU_out
     //io.out.Overflow_out := false.B //XXX:modify when need exception
@@ -420,18 +420,18 @@ class MDU extends Module{
         mdu_wb_reg.w_en := VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)
         mdu_wb_reg.w_addr := isu_mdu_reg.rd 
         mdu_wb_reg.w_data := Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)
-        printf(p"mdu_wb_reg.w_data: ${ Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)}\n")
+        // printf(p"mdu_wb_reg.w_data: ${ Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)}\n")
         hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
         lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
 
         when(VecInit(MDU_MTHI_OP, MDU_MTLO_OP, MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
-            printf("MDU_WB_VALID because MT, MF\n")
+            // printf("MDU_WB_VALID because MT, MF\n")
             mdu_wb_valid := true.B
         } .otherwise{
             mdu_wb_valid := false.B
         }
         isu_mdu_fired := false.B
-        printf(p"ISU_MDU_FIRED! with ${isu_mdu_reg.mdu_op}\n")
+        // printf(p"ISU_MDU_FIRED! with ${isu_mdu_reg.mdu_op}\n")
     } .otherwise{
         dividor.io <> DontCare
         dividor.io.data_dividend_valid := false.B
@@ -442,7 +442,7 @@ class MDU extends Module{
     when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
         multiplier_delay_count := conf.mul_stages.U(3.W)
         mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
-        printf("MDU_WB_VALID because MULTIPLIER DONE\n")
+        // printf("MDU_WB_VALID because MULTIPLIER DONE\n")
         mdu_wb_valid := true.B
         when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
             val hi_lo = Cat(hi, lo) + multiplier.io.data_dout(63, 0)
@@ -467,8 +467,8 @@ class MDU extends Module{
         lo := dividor.io.data_dout_bits(71, 40)
         hi := dividor.io.data_dout_bits(31, 0)  
         // }
-        printf("MDU_WB_VALID because DIVIDOR DONE\n")
-        printf(p"DIV: ${dividor.io.data_dout_bits(71, 40)} - ${ dividor.io.data_dout_bits(31, 0)} to \n")
+        // printf("MDU_WB_VALID because DIVIDOR DONE\n")
+        // printf(p"DIV: ${dividor.io.data_dout_bits(71, 40)} - ${ dividor.io.data_dout_bits(31, 0)} to \n")
     }
 
     when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
@@ -481,7 +481,7 @@ class MDU extends Module{
     when(io.exec_wb.fire()){
         mdu_wb_valid := false.B
     }
-    printf(p"hi: ${hi}, lo: ${lo}\n")
-    printf("====\n")
+    // printf(p"hi: ${hi}, lo: ${lo}\n")
+    // printf("====\n")
     // printf(p"fire to wb: ${io.exec_wb.fire()}, MUL: ${multiplier_delay_count}\n")
 }
