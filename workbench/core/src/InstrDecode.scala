@@ -60,6 +60,7 @@ class InstrDecode extends Module{
             SEH  -> List(rd, DontCare, RT_SEL, DontCare, ALU_ID, ALU_SEH_OP),
             WSBH -> List(rd, DontCare, RT_SEL, DontCare, ALU_ID, ALU_WSBH_OP),
             INS  -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_INS_OP),
+            EXT  -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_EXT_OP),
             // TODO: MOVN 
             // TODO: MOVZ 
 

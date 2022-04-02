@@ -43,7 +43,8 @@ class ALU extends Module{
         (r.alu_op === ALU_SEB_OP) -> Cat(Fill(24, B_in(7)), B_in(7, 0)),
         (r.alu_op === ALU_SEH_OP) -> Cat(Fill(16, B_in(15)), B_in(15, 0)),
         (r.alu_op === ALU_WSBH_OP)-> (Cat(Cat(B_in(23, 16), B_in(31, 24)), Cat(B_in(7, 0), B_in(15, 8)))),
-        (r.alu_op === ALU_INS_OP) -> (((A_in&a_mask)<<lsb).asUInt()(31, 0) + (B_in&b_mask))
+        (r.alu_op === ALU_INS_OP) -> (((A_in&a_mask)<<lsb).asUInt()(31, 0) + (B_in&b_mask)),
+        (r.alu_op === ALU_EXT_OP) -> ((A_in>>lsb) & ("h_ffff_ffff".U(32.W)>>(31.U - msb)))
     ))(31, 0)
     //io.out.ALU_out := ALU_out
     //io.out.Overflow_out := false.B //XXX:modify when need exception
