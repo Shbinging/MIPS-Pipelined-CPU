@@ -10,11 +10,13 @@ import njumips.consts._
 class ALU extends Module{
     val io = IO{new Bundle{
         val isu_alu = Flipped(Decoupled(new ISU_ALU))
+        val flush = Input(Bool())
         val exec_wb = Decoupled(new ALU_WB)
     }}
-    io.isu_alu.ready := true.B
-    val isu_alu_fire = RegNext(io.isu_alu.fire()  & ~reset.asBool())
+    val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
+    io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
+    
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
     val ALU_op = WireInit(r.alu_op)
@@ -72,26 +74,28 @@ class ALU extends Module{
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
     io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
-    io.exec_wb.bits.w_en := isu_alu_fire
-    io.exec_wb.valid := isu_alu_fire  // 1 cycle 
-    // when (isu_alu_fire){
-    // // printf("=====EXEC=====\n")
-    // printf(p"${io.isu_alu}\n")
-    // //printf(p"${io.out}\n")
-    // printf(p"${io.exec_wb}\n")
-    // printf("==========\n")
-    // }
+    io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
+    io.exec_wb.bits.current_pc := r.current_pc
+    io.exec_wb.bits.current_instr := r.current_instr
+    io.exec_wb.valid := isu_alu_prepared  // 1 cycle 
+
+    when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
+        isu_alu_prepared := N
+    } .elsewhen (!io.flush && io.isu_alu.fire()) {
+        isu_alu_prepared := Y
+    }
 }
 
 class BRU extends Module{
     val io = IO{new Bundle{
         val isu_bru = Flipped(Decoupled(new ISU_BRU))
+        val flush = Input(Bool())
         val exec_wb = Decoupled(new BRU_WB)
-    }}
-    io.isu_bru.ready := true.B  // XXX: always ready
-    
-    val isu_bur_fire = RegNext(io.isu_bru.fire()  & ~reset.asBool())
+    }}    
+    val isu_bur_fire = RegNext(false.B)
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
+    io.isu_bru.ready := io.exec_wb.fire() || !isu_bur_fire
+
     val bruwb = Wire(new BRU_WB)
     bruwb := DontCare
     bruwb.w_en := false.B
@@ -131,36 +135,43 @@ class BRU extends Module{
         bruwb.w_data := r.pcNext + 4.U
     }
 //bruwb.w_pc_addr := 
-    io.exec_wb.valid := isu_bur_fire
 
+    when (io.flush || (!io.isu_bru.fire() && io.exec_wb.fire())) {
+        isu_bur_fire := N
+    } .elsewhen (!io.flush && io.isu_bru.fire()) {
+        isu_bur_fire := Y
+    }
+    bruwb.current_pc := r.current_pc
+    bruwb.current_instr := r.current_instr
     io.exec_wb.bits <> bruwb
+    io.exec_wb.valid := isu_bur_fire
 }
 
 class LSU extends Module{
     val io = IO{new Bundle{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
+        val flush = Input(Bool())
         val exec_wb = Decoupled(new LSU_WB)
     }}
-    io.exec_wb.bits := DontCare
-    io.isu_lsu.ready := true.B
-    val isu_lsu_fire = Reg(Bool())
-    val state_reg = Reg(UInt(STATUS_WIDTH.W))
-    when(reset.asBool()){
-        isu_lsu_fire := false.B
-        state_reg := LSU_DIE
-    }
+    io.exec_wb.bits <> DontCare // FIXME
 
-    when(io.isu_lsu.fire()){
-        isu_lsu_fire := true.B
+    val isu_lsu_fire = RegInit(false.B)
+    io.isu_lsu.ready := io.exec_wb.fire() || !isu_lsu_fire
+    val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
+    val state_reg = RegInit(LSU_DIE)
+
+    when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
+        isu_lsu_fire := N
+    } .elsewhen (!io.flush && io.isu_lsu.fire()) {
+        isu_lsu_fire := Y
         state_reg := LSU_DECODE
     }
 
-    val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
 	val back_reg = Reg(new Bundle{
 		val w_en = UInt(4.W)
     	val w_addr = UInt(REG_SZ.W)
 		val w_data = UInt(conf.data_width.W)
-		})
+	})
 	val read_reg = Reg(new Bundle{
 		val addr = UInt(conf.data_width.W)
 		val len = UInt(2.W)
@@ -302,77 +313,10 @@ class LSU extends Module{
 			state_reg := LSU_DIE
 		}
 	}
+
+    io.exec_wb.bits.current_pc := r.current_pc
+    io.exec_wb.bits.current_instr := r.current_instr
 }
-
-
-    // val vAddr = WireInit((r.imm.asSInt() + r.rsData.asSInt()).asUInt())
-    // val shiftPos = VecInit(0.U, 8.U, 16.U, 24.U, 32.U)
-    // val index = vAddr(1, 0).asUInt()
-    // dev.io.in.req.bits.addr := vAddr
-    // val resp_fire = RegNext(dev.io.in.resp.fire().asBool())
-    // val resp_data_reg = RegEnable(dev.io.in.resp.bits, dev.io.in.resp.fire())
-    // when(VecInit(LSU_LBU_OP, LSU_LB_OP, LSU_LH_OP, LSU_LWL_OP, LSU_LWR_OP, LSU_LW_OP).contains(r.lsu_op)){
-    //     val decoded_instr = ListLookup(r.lsu_op, List(MX_RD, 0.U), Array(
-    //         BitPat(LSU_LBU_OP)->List(MX_RD, 0.U),
-    //         BitPat(LSU_LB_OP)->List(MX_RD, 0.U),
-    //         BitPat(LSU_LH_OP)->List(MX_RD, 1.U),
-    //         BitPat(LSU_LWL_OP)->List(MX_RD, 3.U),
-    //         BitPat(LSU_LWR_OP)->List(MX_RD, 3.U),
-    //         BitPat(LSU_LW_OP)->List(MX_RD, 3.U),
-    //     ))
-    //     dev.io.in.req.bits.func := decoded_instr(0)
-    //     dev.io.in.req.bits.len := decoded_instr(1)
-    //     // when(resp_fire){
-
-    //     // }
-    // //     when(resp_fire){
-    // //         io.exec_wb.bits.w_en := "b1111".U
-    // //         io.exec_wb.bits.w_addr := r.rt
-    // //         val shiftMask1 = VecInit("0xffffff".U, "0xffff".U, "0xff".U, "0x0".U)
-    // //         io.exec_wb.bits.w_data := MuxLookup(r.lsu_op, 0.U, Seq(
-    // //             LSU_LB_OP->((resp_data_reg.data & 0xff.U).asTypeOf(SInt(32.W))).asUInt(),
-    // //             LSU_LBU_OP->(resp_data_reg.data & 0xff.U).asUInt(),
-    // //             LSU_LH_OP -> ((resp_data_reg.data &0xffff.U).asTypeOf(SInt(32.W))).asUInt(),
-    // //             LSU_LHU_OP -> (resp_data_reg.data &0xffff.U).asUInt(),
-    // //             LSU_LW_OP -> ((resp_data_reg.data).asTypeOf(SInt(32.W))).asUInt(),
-    // //             LSU_LWL_OP -> (((resp_data_reg.data) << (~index << 3)) | (shiftMask1(index) & r.rt)),
-    // //             LSU_LWR_OP -> ((resp_data_reg.data) >> (index << 3)),
-    // //             ).asTypeOf(UInt(32.W))
-    // //         when(r.lsu_op === LSU_LWR_OP){
-    // //             val shiftMask2 = VecInit("b1111".U, "b0111".U, "b0011".U, "b0001".U)
-    // //             io.exec_wb.bits.w_en := shiftMask2(index)
-    // //         }   
-    // //     }
-    // }.otherwise{
-    //         dev.io.in.req.bits.func := MX_WR
-    //         dev.io.in.req.bits.data := MuxLookup(r.lsu_op, 0.U,Array(
-    //             LSU_SB_OP -> r.rtData(7, 0),
-    //             LSU_SH_OP -> r.rtData(15, 0),
-    //             LSU_SW_OP -> r.rtData,
-    //             LSU_SWL_OP -> (r.rtData >> shiftPos(3.U - index)),
-    //             LSU_SWR_OP -> (r.rsData >> shiftPos(index))
-    //         ))
-    //         dev.io.in.req.bits.len := MuxLookup(r.lsu_op, 0.U, Array(
-    //             LSU_SB_OP -> 0.U,
-    //             LSU_SH_OP -> 1.U,
-    //             LSU_SW_OP -> 3.U,
-    //             LSU_SWL_OP -> 3.U,
-    //             LSU_SWR_OP -> 3.U
-    //         ))
-    //         when(r.lsu_op === LSU_SWL_OP){
-    //             dev.io.in.req.bits.len := index
-    //         }
-    //         when(r.lsu_op === LSU_SWR_OP){
-    //             dev.io.in.req.bits.len := 3.U - index
-    //             dev.io.in.req.bits.addr := vAddr + index
-    //         }
-    //         io.exec_wb.bits.w_en := 0.U
-    
-    // }
-    // when(resp_fire){
-    //     isu_lsu_fire := 0.U
-    // }
-    // io.exec_wb.valid := resp_fire & ~reset.asBool()
 
 
 class Divider extends Module {
@@ -405,15 +349,22 @@ class Multiplier extends Module {
 class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
+        val flush = Input(Bool())
         val exec_wb = Decoupled(new MDU_WB)
     })
     val multiplier = Module(new Multiplier)
     val dividor = Module(new Divider)
     
-    io.isu_mdu.ready := true.B  // always ready 
-    val isu_mdu_fired = RegEnable(io.isu_mdu.fire(), false.B, io.isu_mdu.fire())
+    val isu_mdu_fired = RegInit(false.B)
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
+    io.isu_mdu.ready := io.exec_wb.fire() || !isu_mdu_fired
     
+    when (io.flush || (!io.isu_mdu.fire() && io.exec_wb.fire())) {
+        isu_mdu_fired:= false.B
+    } .elsewhen (!io.flush && io.isu_mdu.fire()) {
+        isu_mdu_fired := true.B
+    }
+
     val mdu_wb_valid = RegInit(false.B)
     val mdu_wb_reg = Reg(new MDU_WB)
 
@@ -501,9 +452,12 @@ class MDU extends Module{
         multiplier_delay_count := multiplier_delay_count - 1.U
     }
 
-
+    mdu_wb_reg.current_pc := isu_mdu_reg.current_pc
+    mdu_wb_reg.current_instr := isu_mdu_reg.current_instr
     io.exec_wb.valid := mdu_wb_valid
     io.exec_wb.bits <> mdu_wb_reg
+    
+
     when(io.exec_wb.fire()){
         mdu_wb_valid := false.B
     }

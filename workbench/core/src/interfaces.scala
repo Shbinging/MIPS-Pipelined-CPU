@@ -56,10 +56,11 @@ class ID_ISU extends Bundle{
     
     val op = Output(UInt(OPCODE_WIDTH.W))
     
-    //TODO:3-27
+    val instr_index = Output(UInt(26.W)) //J type
+    
     // val branch_op= Output(UInt(OPCODE_WIDTH.W)) //see config, use oop
     val pcNext = Output(UInt(conf.addr_width.W)) //currentpc + 4
-    val instr_index = Output(UInt(26.W)) //J type
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 // ISU_ALU
@@ -70,6 +71,9 @@ class ISU_ALU extends Bundle{
     val operand_2 = Output(UInt(conf.data_width.W))
     val imm = Output(UInt(IMM_SZ.W))
     val rd_addr = Output(UInt(REG_SZ.W))
+
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 class ISU_BRU extends Bundle{
@@ -80,6 +84,9 @@ class ISU_BRU extends Bundle{
     val rsData = Output(UInt(conf.data_width.W))
     val rtData = Output(UInt(conf.data_width.W))
     val instr_index = Output(UInt(26.W))
+
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 class ISU_LSU extends Bundle{
@@ -88,6 +95,9 @@ class ISU_LSU extends Bundle{
     val rsData = Output(UInt(conf.data_width.W))
     val rtData = Output(UInt(conf.data_width.W))
     val imm = Output(UInt(IMM_SZ.W))
+
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 class ISU_MDU extends Bundle{
@@ -95,6 +105,9 @@ class ISU_MDU extends Bundle{
   val rsData = Output(UInt(conf.data_width.W))
   val rtData = Output(UInt(conf.data_width.W))
   val rd = Output(UInt(REG_SZ.W))
+
+  val current_pc = Output(UInt(conf.addr_width.W))
+  val current_instr = Output(UInt(conf.data_width.W))
 }
 
 // EXEC
@@ -104,6 +117,9 @@ class ALU_WB extends Bundle{
     val ALU_out = Output(UInt(32.W))
     val Overflow_out = Output(Bool())
    // val exu_id = Output(UInt(EX_ID_WIDTH.W))
+    
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 class BRU_WB extends Bundle{
@@ -112,19 +128,33 @@ class BRU_WB extends Bundle{
     val w_data = Output(UInt(conf.data_width.W))
     val w_pc_en = Output(Bool())
     val w_pc_addr = Output(UInt(conf.data_width.W))
+
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 
 class LSU_WB extends Bundle{
     val w_en = Output(UInt(4.W))
     val w_addr = Output(UInt(REG_SZ.W))
     val w_data = Output(UInt(conf.data_width.W))
+
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
 }
 class MDU_WB extends Bundle{
   val w_en = Output(Bool())
   val w_addr = Output(UInt(REG_SZ.W))
   val w_data = Output(UInt(conf.data_width.W))
+
+  val current_pc = Output(UInt(conf.addr_width.W))
+  val current_instr = Output(UInt(conf.data_width.W))
 }
 
+class WB_COMMMIT extends Bundle{
+  val commit = Output(Bool())
+  val commit_pc = Output(UInt(conf.addr_width.W))
+  val commit_instr = Output(UInt(conf.data_width.W))
+}
 
 class DividerIO extends Bundle {
   val data_dividend_valid = Output(Bool())

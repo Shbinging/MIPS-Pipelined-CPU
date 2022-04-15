@@ -8,15 +8,13 @@ import njumips.consts._
 class InstrDecode extends Module{
     val io = IO(new Bundle{
         val if_id = Flipped(Decoupled(new IF_ID))
+        val flush = Input(Bool())
         val out_gpr_read = Flipped(new GPRReadIntput)
         val id_isu = Decoupled(new ID_ISU)
     })
-    //io.id_isu.bits := DontCare
-    io.if_id.ready := true.B   // unidir handshake 
-    val if_id_fire = RegNext(io.if_id.fire())
-    val if_id_reg = RegNext(io.if_id.bits)// RegEnableUse(io.if_id.bits, if_id_fire)
-    // printf(p"decode working: ${if_id_fire}\n")
-
+    val if_id_reg = RegEnable(next=io.if_id.bits, enable=io.if_id.fire())
+    val if_id_reg_prepared = RegInit(false.B)
+    io.if_id.ready := io.id_isu.ready || !if_id_reg_prepared
 
     val instr_op = if_id_reg.instr(31, 26)
     val funct = if_id_reg.instr(5, 0)
@@ -27,7 +25,7 @@ class InstrDecode extends Module{
     io.id_isu.bits.shamt := if_id_reg.instr(10, 6)
     io.id_isu.bits.instr_index := if_id_reg.instr(26, 0)
     io.id_isu.bits.pcNext := if_id_reg.pcNext
-
+    io.id_isu.bits.current_instr := if_id_reg.instr
     // rd_addr, shamt_rs_sel, imm_rt_sel, sign_ext, exu, op 
     val decoded_instr = ListLookup(if_id_reg.instr, List(rd, RS_SEL, RT_SEL, ZERO_EXT_SEL, ALU_ID, ALU_ADD_OP),
         Array(
@@ -116,13 +114,12 @@ class InstrDecode extends Module{
     io.id_isu.bits.exu := decoded_instr(4)
     io.id_isu.bits.op := decoded_instr(5)
     
-    io.id_isu.valid := if_id_fire  & ~reset.asBool()   // TODO: complete in 1 cycle
-    // when(if_id_fire){
-    //     printf("instr:%x\n", io.if_id.bits.instr)
-    // }
-    // when(io.id_isu.valid){
-    //     printf(p"xxx${if_id_reg}")
-    // }
-
     io.out_gpr_read := if_id_reg.instr(25, 16).asTypeOf(new GPRReadIntput)
+
+    io.id_isu.valid := if_id_reg_prepared
+    when(io.flush || (!io.if_id.fire() && io.id_isu.fire())){
+        if_id_reg_prepared := false.B
+    } .elsewhen(!io.flush && io.if_id.fire()){
+        if_id_reg_prepared := true.B
+    }
 }

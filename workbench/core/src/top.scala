@@ -14,11 +14,10 @@ class verilator_top extends Module {
     val io = IO(new Bundle {
         val commit = new CommitIO   // defined in interfaces.scala
         val can_log_now = Input(Bool())
-        val vali = Output(Bool())
     })
     val global_time = RegInit(1.U(32.W))
     global_time := global_time + 1.U 
-    // printf(p"\n============\nGlobal Time: ${global_time}\n")
+    printf(p"\n============\nGlobal Time: ${global_time}\n")
     val gprs = Module(new GPR)
     val instr_fetch = Module(new InstrFetch)
     val instr_decode = Module(new InstrDecode)
@@ -30,7 +29,20 @@ class verilator_top extends Module {
     val mdu = Module(new MDU)
 
     val write_back = Module(new WriteBack)
-    io.vali := write_back.io.wb_if.valid
+
+    printf(p"if-id: ${instr_fetch.io.if_id}\n")
+    printf(p"id-isu: ${instr_decode.io.id_isu}\n")
+    
+
+    val commit = RegNext(write_back.io.commit)
+    instr_fetch.io.flush := write_back.io.flush
+    instr_decode.io.flush := write_back.io.flush 
+    instr_shoot.io.flush := write_back.io.flush 
+    alu.io.flush := write_back.io.flush
+    bru.io.flush := write_back.io.flush 
+    lsu.io.flush := write_back.io.flush 
+    mdu.io.flush := write_back.io.flush
+
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
     instr_fetch.io.wb_if <> write_back.io.wb_if
     
@@ -57,10 +69,9 @@ class verilator_top extends Module {
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)
     }
-    io.commit.pc := instr_fetch.io.pc
-
-    io.commit.valid := instr_fetch.io.cycledone
-    io.commit.instr := instr_fetch.io.if_id.bits.instr
+    io.commit.pc := commit.commit_pc
+    io.commit.valid := commit.commit
+    io.commit.instr := commit.commit_instr
 
     // when(io.commit.valid){
     //   printf(p"${io.commit}\n")
