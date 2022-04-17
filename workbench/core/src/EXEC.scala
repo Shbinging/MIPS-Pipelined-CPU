@@ -391,7 +391,7 @@ class MDU extends Module{
         }
 
         val is_mul = VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)
-        multiplier_delay_count := Mux(is_mul && multiplier_delay_count==conf.mul_stages.U(3.W), (conf.mul_stages-1).U(3.W), (conf.mul_stages).U(3.W))
+        multiplier_delay_count := Mux(is_mul && multiplier_delay_count===conf.mul_stages.U(3.W), (conf.mul_stages-1).U(3.W), (conf.mul_stages).U(3.W))
         multiplier.io.data_a := Cat(
             Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rsData(31)),
             isu_mdu_reg.rsData
