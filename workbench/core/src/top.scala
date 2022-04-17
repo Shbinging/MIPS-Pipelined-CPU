@@ -15,9 +15,7 @@ class verilator_top extends Module {
         val commit = new CommitIO   // defined in interfaces.scala
         val can_log_now = Input(Bool())
     })
-    val global_time = RegInit(1.U(32.W))
-    global_time := global_time + 1.U 
-    printf(p"\n============\nGlobal Time: ${global_time}\n")
+
     val gprs = Module(new GPR)
     val instr_fetch = Module(new InstrFetch)
     val instr_decode = Module(new InstrDecode)
@@ -30,8 +28,6 @@ class verilator_top extends Module {
 
     val write_back = Module(new WriteBack)
 
-    printf(p"if-id: ${instr_fetch.io.if_id}\n")
-    printf(p"id-isu: ${instr_decode.io.id_isu}\n")
     
 
     val commit = RegNext(write_back.io.commit)
@@ -64,7 +60,7 @@ class verilator_top extends Module {
     write_back.io.mdu_wb <> mdu.io.exec_wb
 
     gprs.io.write_in <> write_back.io.gpr_wr
-
+    printf(p"write_back io gpr wr: ${write_back.io.gpr_wr}\n")
     io.commit <> DontCare
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)
@@ -73,9 +69,7 @@ class verilator_top extends Module {
     io.commit.valid := commit.commit
     io.commit.instr := commit.commit_instr
 
-    // when(io.commit.valid){
-    //   printf(p"${io.commit}\n")
-    // }
+    printf(p"Commit! ${io.commit}\n")
 }
 
 

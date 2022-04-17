@@ -73,12 +73,12 @@ class ALU extends Module{
     //io.exec_wb.bits.
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
-    io.exec_wb.bits.w_addr := io.isu_alu.bits.rd_addr
+    io.exec_wb.bits.w_addr := r.rd_addr // io.isu_alu.bits.rd_addr
     io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.valid := isu_alu_prepared  // 1 cycle 
-
+    printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
     when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N
     } .elsewhen (!io.flush && io.isu_alu.fire()) {

@@ -31,7 +31,7 @@ reg [31:0] resp_data;
 wire in_req_fire;
 
 assign in_resp_bits_data = resp_data;
-assign in_req_ready = !resp_valid;
+assign in_req_ready = !resp_valid || (resp_valid && in_resp_ready);
 assign in_resp_valid = resp_valid;
 assign in_req_fire = in_req_valid && in_req_ready;
 

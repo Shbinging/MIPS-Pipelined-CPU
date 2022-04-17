@@ -122,4 +122,7 @@ class InstrDecode extends Module{
     } .elsewhen(!io.flush && io.if_id.fire()){
         if_id_reg_prepared := true.B
     }
+    when(io.id_isu.fire()){
+        printf(p"out_gpr_read  ${io.out_gpr_read.rs_addr} ${io.out_gpr_read.rt_addr} ${io.id_isu.bits.rd_addr}\n")
+    }
 }

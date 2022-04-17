@@ -17,6 +17,7 @@ class ISU extends Module {
         val isu_mdu = Decoupled(new ISU_MDU)
     })
     val reg_id_isu = RegEnable(next=io.id_isu.bits, enable=io.id_isu.fire())
+    val reg_gpr_isu = RegEnable(next=io.gpr_data, enable=io.id_isu.fire())
     val reg_id_isu_prepared = RegInit(false.B)
     
     // XXX: OoO not allowed
@@ -35,7 +36,7 @@ class ISU extends Module {
             val iaBundle = Wire(new ISU_ALU)
             iaBundle := DontCare
             iaBundle.imm := reg_id_isu.imm
-            iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, io.gpr_data.rs_data, reg_id_isu.shamt)
+            iaBundle.operand_1 := Mux(reg_id_isu.shamt_rs_sel, reg_gpr_isu.rs_data, reg_id_isu.shamt)
             iaBundle.alu_op := reg_id_isu.op
             iaBundle.rd_addr := reg_id_isu.rd_addr
             iaBundle.current_instr := reg_id_isu.current_instr
@@ -51,7 +52,7 @@ class ISU extends Module {
                     }
                 }
                 is (true.B){//reg
-                    iaBundle.operand_2 := io.gpr_data.rt_data
+                    iaBundle.operand_2 := reg_gpr_isu.rt_data
                 }
             }
             io.isu_alu.bits <> iaBundle
@@ -62,8 +63,8 @@ class ISU extends Module {
             bruBundle.offset := reg_id_isu.imm
             bruBundle.rd := reg_id_isu.rd_addr
             bruBundle.instr_index := reg_id_isu.instr_index
-            bruBundle.rsData := io.gpr_data.rs_data //XXX:need handshake
-            bruBundle.rtData := io.gpr_data.rt_data
+            bruBundle.rsData := reg_gpr_isu.rs_data //XXX:need handshake
+            bruBundle.rtData := reg_gpr_isu.rt_data
             bruBundle.pcNext := reg_id_isu.pcNext
             bruBundle.current_instr := reg_id_isu.current_instr
             bruBundle.current_pc := reg_id_isu.pcNext - 4.U
@@ -73,8 +74,8 @@ class ISU extends Module {
         is(LSU_ID){
             io.isu_lsu.valid := reg_id_isu_prepared
             io.isu_lsu.bits.imm := reg_id_isu.imm
-            io.isu_lsu.bits.rsData := io.gpr_data.rs_data
-            io.isu_lsu.bits.rtData := io.gpr_data.rt_data
+            io.isu_lsu.bits.rsData := reg_gpr_isu.rs_data
+            io.isu_lsu.bits.rtData := reg_gpr_isu.rt_data
             io.isu_lsu.bits.rt := reg_id_isu.rd_addr
             io.isu_lsu.bits.lsu_op := reg_id_isu.op
 
@@ -84,8 +85,8 @@ class ISU extends Module {
         is(MDU_ID){
             io.isu_mdu.valid := reg_id_isu_prepared
             io.isu_mdu.bits.mdu_op := reg_id_isu.op
-            io.isu_mdu.bits.rsData := io.gpr_data.rs_data
-            io.isu_mdu.bits.rtData := io.gpr_data.rt_data
+            io.isu_mdu.bits.rsData := reg_gpr_isu.rs_data
+            io.isu_mdu.bits.rtData := reg_gpr_isu.rt_data
             io.isu_mdu.bits.rd := reg_id_isu.rd_addr
 
             io.isu_lsu.bits.current_instr := reg_id_isu.current_instr
