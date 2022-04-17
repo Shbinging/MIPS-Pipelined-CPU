@@ -151,7 +151,8 @@ class LSU extends Module{
         val exec_wb = Decoupled(new LSU_WB)
     }}
     io.exec_wb.bits <> DontCare // FIXME
-
+    printf("io.exec_wb.valid %d io.isu_lsu.ready %d\n", io.exec_wb.valid, io.isu_lsu.ready)
+    io.exec_wb.valid:=false.B
     val isu_lsu_fire = RegInit(false.B)
     io.isu_lsu.ready := io.exec_wb.fire() || !isu_lsu_fire
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
@@ -303,6 +304,7 @@ class LSU extends Module{
 			}
 		}
 		is (LSU_BACK){
+            printf("lsu ok\n");
 			io.exec_wb.valid := true.B
 			io.exec_wb.bits.w_addr := back_reg.w_addr
 			io.exec_wb.bits.w_en := back_reg.w_en
@@ -354,10 +356,11 @@ class MDU extends Module{
     val isu_mdu_fired = RegInit(false.B)
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
     io.isu_mdu.ready := io.exec_wb.fire() || !isu_mdu_fired
-    
+    printf("io.isu_mdu.ready %d isu_mdu_fired %d \n", io.isu_mdu.ready, isu_mdu_fired);
     when ((!io.isu_mdu.fire() && io.exec_wb.fire())) {
         isu_mdu_fired:= false.B
     } .elsewhen (io.isu_mdu.fire()) {
+        printf("mdu is working!\n");
         isu_mdu_fired := true.B
     }
 
@@ -409,7 +412,7 @@ class MDU extends Module{
         } .otherwise{
             mdu_wb_valid := false.B
         }
-        isu_mdu_fired := false.B
+        //isu_mdu_fired := false.B
     } .otherwise{
         dividor.io <> DontCare
         dividor.io.data_dividend_valid := false.B
@@ -447,8 +450,9 @@ class MDU extends Module{
     when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
         multiplier_delay_count := multiplier_delay_count - 1.U
     }
-
+    printf("count:%d\n", multiplier_delay_count)
     mdu_wb_reg.current_pc := isu_mdu_reg.current_pc
+    printf("pc %x\n", isu_mdu_reg.current_pc)
     mdu_wb_reg.current_instr := isu_mdu_reg.current_instr
     io.exec_wb.valid := mdu_wb_valid
     io.exec_wb.bits <> mdu_wb_reg

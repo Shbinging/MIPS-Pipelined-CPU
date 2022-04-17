@@ -6,7 +6,7 @@ CFLAGS += -c -O2 -EL -g
 # CFLAGS += -mno-abicalls -g -Iinclude -I.
 
 run-%: build/%.elf $(EMU_BIN)
-	$(EMU_BIN) -e $<
+	$(EMU_BIN) -e $< 2> npc.out
 
 $(EMU_BIN):
 	cd .. && make 

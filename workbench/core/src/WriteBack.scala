@@ -36,7 +36,8 @@ class WriteBack extends Module{
 
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
-    
+    printf("mdu wb %d\n", mdu_wb_fire)
+    printf("alu wb %d\n", alu_wb_fire)
     val bru_wb_prepared = RegInit(N)
     when(!io.bru_wb.fire() && io.wb_if.fire()){
         bru_wb_prepared := false.B
@@ -80,12 +81,13 @@ class WriteBack extends Module{
         io.commit.commit_instr := reg_lsu_wb.current_instr
         io.commit.commit := true.B
         // io.wb_if.bits.pc_w_en := 0.U
-        //printf(p"lsu wb\n")
+        printf(p"lsu wb\n")
     }.elsewhen(mdu_wb_fire){
         io.gpr_wr.addr := reg_mdu_wb.w_addr
         io.gpr_wr.data := reg_mdu_wb.w_data
         io.gpr_wr.w_en := Mux(reg_mdu_wb.w_en, "b1111".U, 0.U)
         //printf(p"w_en: ${io.gpr_wr.w_en} w_data: ${io.gpr_wr.data}\n")
+        printf("commit %x\n", reg_mdu_wb.current_pc)
         io.wb_if.bits.pc_w_data := false.B
         io.commit.commit_pc := reg_mdu_wb.current_pc
         io.commit.commit_instr := reg_mdu_wb.current_instr
