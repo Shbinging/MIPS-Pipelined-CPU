@@ -20,7 +20,7 @@ class ISU extends Module {
     val reg_gpr_isu = RegEnable(next=io.gpr_data, enable=io.id_isu.fire())
     val reg_id_isu_prepared = RegInit(false.B)
     
-    // XXX: OoO not allowed
+    // XXX: OoO not allowed 
     val empty = Wire(Bool())
     empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready)
     io.id_isu.ready := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready) || !reg_id_isu_prepared 

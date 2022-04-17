@@ -44,8 +44,14 @@ class WriteBack extends Module{
         bru_wb_prepared := true.B
     }
     io.wb_if.valid := bru_wb_prepared
+    /*
+     FIXME 
+     当出现连续两个branch的时候，在第一个branch的WB阶段，第二个branch的延迟槽位于ISU阶段，会被flush掉
+    */
+    
     val flush = RegNext(io.bru_wb.fire() & io.bru_wb.bits.w_pc_en, init = N)
     io.flush := flush  // 
+
     //printf(p"flush: ${io.flush}\n")
     // no branch
     io.wb_if.bits.pc_w_data <> DontCare

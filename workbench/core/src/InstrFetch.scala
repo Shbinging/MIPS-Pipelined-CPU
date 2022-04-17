@@ -39,26 +39,23 @@ class InstrFetch extends Module{
     dev.io.in.req.bits.addr := pc_reg
     dev.io.in.req.bits.len := 3.U   // 00, 01, 10, 11
     dev.io.in.req.valid := true.B && !io.flush
-    // when(dev.io.in.req.valid){
-    //     printf("req.valid\n");
-    // }
-    // printf(p"flush:${io.flush}\n")
+    /*
+        FIXME 
+        branch之前已经下发的指令取出后必须销毁
+        在这里由于没有miss，所以通过dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared || io.flush
+        和io.if_id.valid := Mux(dev.io.in.resp.fire(), dev.io.in.resp.fire() && !io.flush, if_id_instr_prepared) 能确保在flush的那个周期销毁，
+        要记录一个时间戳，时间戳之前的指令全部销毁
+    */
+    
     val if_id_instr = RegEnable(dev.io.in.resp.bits.data, dev.io.in.resp.fire())
     val if_id_next_pc = RegEnable(request_pc + 4.U, dev.io.in.resp.fire())
     dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared || io.flush
-    //printf(p"resp.ready : ${dev.io.in.resp.ready}\n")
+
     when(io.flush || (!dev.io.in.resp.fire() && io.if_id.fire())){
         if_id_instr_prepared := false.B
     } .elsewhen(!io.flush && dev.io.in.resp.fire()){
         if_id_instr_prepared := true.B
     }
-    // when(dev.io.in.resp.valid){
-    //     printf("resp.valid\n")
-    // }
-    // when(dev.io.in.resp.fire()){
-    //     printf("dev fire!\n");
-    //     printf(p"${request_pc}, ${if_id_instr_prepared}\n")
-    // }
     io.if_id.valid := Mux(dev.io.in.resp.fire(), dev.io.in.resp.fire() && !io.flush, if_id_instr_prepared)
     io.if_id.bits.instr := Mux(dev.io.in.resp.fire(), dev.io.in.resp.bits.data, if_id_instr)
     io.if_id.bits.pcNext := Mux(dev.io.in.resp.fire(), request_pc + 4.U, if_id_next_pc)
