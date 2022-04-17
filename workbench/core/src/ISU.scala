@@ -24,7 +24,7 @@ class ISU extends Module {
     val empty = Wire(Bool())
     empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready)
     io.id_isu.ready := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready) || !reg_id_isu_prepared 
-    printf("id_isu.ready %d\n", io.id_isu.ready)
+    //printf("id_isu.ready %d\n", io.id_isu.ready)
     io.isu_alu <> DontCare
     io.isu_alu.valid := false.B
     io.isu_bru <> DontCare

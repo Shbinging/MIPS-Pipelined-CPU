@@ -33,11 +33,10 @@ class WriteBack extends Module{
     val io_fire = Wire(Bool())
     io_fire := io.alu_wb.fire() || io.bru_wb.fire() || io.lsu_wb.fire() || io.mdu_wb.fire()
     // printf(p"wb working\n\n")
-
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
-    printf("mdu wb %d\n", mdu_wb_fire)
-    printf("alu wb %d\n", alu_wb_fire)
+    //printf("mdu wb %d\n", mdu_wb_fire)
+    //printf("alu wb %d\n", alu_wb_fire)
     val bru_wb_prepared = RegInit(N)
     when(!io.bru_wb.fire() && io.wb_if.fire()){
         bru_wb_prepared := false.B
@@ -60,6 +59,7 @@ class WriteBack extends Module{
         io.commit.commit_pc := reg_alu_wb.current_pc
         io.commit.commit_instr := reg_alu_wb.current_instr
         io.commit.commit := true.B
+        printf("alu wb %x\n", io.commit.commit_pc);
         //printf(p"${time}: alu wb\n")
     }.elsewhen(bru_wb_fire){//XXX:when don't branch, need commit?
         io.gpr_wr.addr := reg_bru_wb.w_addr
@@ -70,8 +70,8 @@ class WriteBack extends Module{
         io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr
-        io.commit.commit := io.wb_if.fire()
-        //printf(p"${time}: bru wb\n")
+        io.commit.commit := true.B
+        printf("bru wb %x\n", io.commit.commit_pc);
     }.elsewhen(lsu_wb_fire){
         io.gpr_wr.addr := reg_lsu_wb.w_addr
         io.gpr_wr.data := reg_lsu_wb.w_data
@@ -81,7 +81,7 @@ class WriteBack extends Module{
         io.commit.commit_instr := reg_lsu_wb.current_instr
         io.commit.commit := true.B
         // io.wb_if.bits.pc_w_en := 0.U
-        printf(p"lsu wb\n")
+        printf("lsu wb %x\n", io.commit.commit_pc);
     }.elsewhen(mdu_wb_fire){
         io.gpr_wr.addr := reg_mdu_wb.w_addr
         io.gpr_wr.data := reg_mdu_wb.w_data
@@ -92,7 +92,7 @@ class WriteBack extends Module{
         io.commit.commit_pc := reg_mdu_wb.current_pc
         io.commit.commit_instr := reg_mdu_wb.current_instr
         io.commit.commit := true.B
-        printf(p"mdu wb\n")
+        printf("mdu wb %x\n", io.commit.commit_pc);
     }
 
 

@@ -15,6 +15,7 @@ class InstrFetch extends Module{
     val dev = Module(new SimDev)
     val timeClock = RegInit(1.U(32.W))
     timeClock := timeClock + 1.U
+    printf("==============\n");
     printf(p"time:${timeClock}\n")
     dev.io.clock := clock
     dev.io.reset := reset.asBool()
