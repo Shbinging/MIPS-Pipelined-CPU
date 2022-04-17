@@ -35,7 +35,7 @@ class GPR extends Module {
     io.read_out.rt_data := gprs(io.read_in.rt_addr).asUInt()
    
     when(io.write_in.w_en.asUInt() =/= 0.U & io.write_in.addr =/= 0.U){
-        printf(p"${time}: Write to regs: ${io.write_in.addr}, ${io.write_in.data}, ${io.write_in.w_en}\n")
+        //printf(p"${time}: Write to regs: ${io.write_in.addr}, ${io.write_in.data}, ${io.write_in.w_en}\n")
         when(io.write_in.w_en(0)){
             gprs(io.write_in.addr)(0) := io.write_in.data(7, 0)
         }

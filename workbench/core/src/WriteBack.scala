@@ -44,9 +44,9 @@ class WriteBack extends Module{
         bru_wb_prepared := true.B
     }
     io.wb_if.valid := bru_wb_prepared
-    val flush = RegNext(io.bru_wb.fire() & io.bru_wb.bits.w_pc_en)
+    val flush = RegNext(io.bru_wb.fire() & io.bru_wb.bits.w_pc_en, init = N)
     io.flush := flush  // 
-    printf(p"flush: ${io.flush}\n")
+    //printf(p"flush: ${io.flush}\n")
     // no branch
     io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
@@ -59,18 +59,18 @@ class WriteBack extends Module{
         io.commit.commit_pc := reg_alu_wb.current_pc
         io.commit.commit_instr := reg_alu_wb.current_instr
         io.commit.commit := true.B
-        printf(p"${time}: alu wb\n")
+        //printf(p"${time}: alu wb\n")
     }.elsewhen(bru_wb_fire){//XXX:when don't branch, need commit?
         io.gpr_wr.addr := reg_bru_wb.w_addr
         io.gpr_wr.data := reg_bru_wb.w_data
         io.gpr_wr.w_en := Mux(reg_bru_wb.w_en, "b1111".U, 0.U)
-        printf(p"${time}: gpr w_en ${io.gpr_wr.w_en}, data ${io.gpr_wr.data}\n")
+        //printf(p"${time}: gpr w_en ${io.gpr_wr.w_en}, data ${io.gpr_wr.data}\n")
         io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
         io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr
         io.commit.commit := io.wb_if.fire()
-        printf(p"${time}: bru wb\n")
+        //printf(p"${time}: bru wb\n")
     }.elsewhen(lsu_wb_fire){
         io.gpr_wr.addr := reg_lsu_wb.w_addr
         io.gpr_wr.data := reg_lsu_wb.w_data
@@ -80,7 +80,7 @@ class WriteBack extends Module{
         io.commit.commit_instr := reg_lsu_wb.current_instr
         io.commit.commit := true.B
         // io.wb_if.bits.pc_w_en := 0.U
-        printf(p"lsu wb\n")
+        //printf(p"lsu wb\n")
     }.elsewhen(mdu_wb_fire){
         io.gpr_wr.addr := reg_mdu_wb.w_addr
         io.gpr_wr.data := reg_mdu_wb.w_data
