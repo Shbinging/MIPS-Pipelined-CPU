@@ -116,7 +116,7 @@ class InstrDecode extends Module{
     
     io.out_gpr_read := if_id_reg.instr(25, 16).asTypeOf(new GPRReadIntput)
 
-    io.id_isu.valid := if_id_reg_prepared
+    io.id_isu.valid := if_id_reg_prepared && !io.flush
     when(io.flush || (!io.if_id.fire() && io.id_isu.fire())){
         if_id_reg_prepared := false.B
     } .elsewhen(!io.flush && io.if_id.fire()){

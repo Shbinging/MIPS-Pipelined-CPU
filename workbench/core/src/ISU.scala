@@ -41,7 +41,7 @@ class ISU extends Module {
             iaBundle.rd_addr := reg_id_isu.rd_addr
             iaBundle.current_instr := reg_id_isu.current_instr
             iaBundle.current_pc := reg_id_isu.pcNext-4.U
-            io.isu_alu.valid := reg_id_isu_prepared
+            io.isu_alu.valid := reg_id_isu_prepared && !io.flush
             io.isu_alu.bits.alu_op := reg_id_isu.op
             switch(reg_id_isu.imm_rt_sel){
                 is(false.B){//imm
@@ -68,11 +68,11 @@ class ISU extends Module {
             bruBundle.pcNext := reg_id_isu.pcNext
             bruBundle.current_instr := reg_id_isu.current_instr
             bruBundle.current_pc := reg_id_isu.pcNext - 4.U
-            io.isu_bru.valid := reg_id_isu_prepared
+            io.isu_bru.valid := reg_id_isu_prepared && !io.flush
             io.isu_bru.bits <> bruBundle
         }
         is(LSU_ID){
-            io.isu_lsu.valid := reg_id_isu_prepared
+            io.isu_lsu.valid := reg_id_isu_prepared && !io.flush
             io.isu_lsu.bits.imm := reg_id_isu.imm
             io.isu_lsu.bits.rsData := reg_gpr_isu.rs_data
             io.isu_lsu.bits.rtData := reg_gpr_isu.rt_data
@@ -83,7 +83,7 @@ class ISU extends Module {
             io.isu_lsu.bits.current_pc := reg_id_isu.pcNext - 4.U
         }
         is(MDU_ID){
-            io.isu_mdu.valid := reg_id_isu_prepared
+            io.isu_mdu.valid := reg_id_isu_prepared && !io.flush
             io.isu_mdu.bits.mdu_op := reg_id_isu.op
             io.isu_mdu.bits.rsData := reg_gpr_isu.rs_data
             io.isu_mdu.bits.rtData := reg_gpr_isu.rt_data

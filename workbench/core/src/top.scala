@@ -34,10 +34,6 @@ class verilator_top extends Module {
     instr_fetch.io.flush := write_back.io.flush
     instr_decode.io.flush := write_back.io.flush 
     instr_shoot.io.flush := write_back.io.flush 
-    alu.io.flush := write_back.io.flush
-    bru.io.flush := write_back.io.flush 
-    lsu.io.flush := write_back.io.flush 
-    mdu.io.flush := write_back.io.flush
 
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
     instr_fetch.io.wb_if <> write_back.io.wb_if

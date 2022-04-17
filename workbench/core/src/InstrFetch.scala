@@ -17,9 +17,11 @@ class InstrFetch extends Module{
     dev.io.reset := reset.asBool()
     printf(p"wb_if ${io.wb_if}\n")
     io.wb_if.ready := true.B
+    val if_id_instr_prepared = RegInit(false.B)
     when(io.wb_if.fire() && io.wb_if.bits.pc_w_en){
         printf("branch!\n")
         pc_reg := io.wb_if.bits.pc_w_data
+        if_id_instr_prepared := N
     } .elsewhen(dev.io.in.req.fire()){
         pc_reg := pc_reg + 4.U
     } 
@@ -36,13 +38,12 @@ class InstrFetch extends Module{
     
     
     val if_id_instr = RegEnable(dev.io.in.resp.bits.data, dev.io.in.resp.fire())
-    val if_id_instr_prepared = RegInit(false.B)
     val if_id_next_pc = RegEnable(request_pc + 4.U, dev.io.in.resp.fire())
     dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared
 
-    when(io.flush || (!dev.io.in.resp.fire() && io.if_id.fire())){
+    when(!dev.io.in.resp.fire() && io.if_id.fire()){
         if_id_instr_prepared := false.B
-    } .elsewhen(!io.flush && dev.io.in.resp.fire()){
+    } .elsewhen(dev.io.in.resp.fire()){
         if_id_instr_prepared := true.B
     }
 

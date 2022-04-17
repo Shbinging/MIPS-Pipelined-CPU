@@ -10,7 +10,6 @@ import njumips.consts._
 class ALU extends Module{
     val io = IO{new Bundle{
         val isu_alu = Flipped(Decoupled(new ISU_ALU))
-        val flush = Input(Bool())
         val exec_wb = Decoupled(new ALU_WB)
     }}
     val isu_alu_prepared = RegNext(false.B)
@@ -79,9 +78,9 @@ class ALU extends Module{
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.valid := isu_alu_prepared  // 1 cycle 
     printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
-    when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
+    when ((!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N
-    } .elsewhen (!io.flush && io.isu_alu.fire()) {
+    } .elsewhen (io.isu_alu.fire()) {
         isu_alu_prepared := Y
     }
 }
@@ -89,7 +88,6 @@ class ALU extends Module{
 class BRU extends Module{
     val io = IO{new Bundle{
         val isu_bru = Flipped(Decoupled(new ISU_BRU))
-        val flush = Input(Bool())
         val exec_wb = Decoupled(new BRU_WB)
     }}    
     val isu_bur_fire = RegNext(false.B)
@@ -136,9 +134,9 @@ class BRU extends Module{
     }
 //bruwb.w_pc_addr := 
 
-    when (io.flush || (!io.isu_bru.fire() && io.exec_wb.fire())) {
+    when ((!io.isu_bru.fire() && io.exec_wb.fire())) {
         isu_bur_fire := N
-    } .elsewhen (!io.flush && io.isu_bru.fire()) {
+    } .elsewhen (io.isu_bru.fire()) {
         isu_bur_fire := Y
     }
     bruwb.current_pc := r.current_pc
@@ -150,7 +148,6 @@ class BRU extends Module{
 class LSU extends Module{
     val io = IO{new Bundle{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
-        val flush = Input(Bool())
         val exec_wb = Decoupled(new LSU_WB)
     }}
     io.exec_wb.bits <> DontCare // FIXME
@@ -160,9 +157,9 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
+    when ((!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
-    } .elsewhen (!io.flush && io.isu_lsu.fire()) {
+    } .elsewhen (io.isu_lsu.fire()) {
         isu_lsu_fire := Y
         state_reg := LSU_DECODE
     }
@@ -349,7 +346,6 @@ class Multiplier extends Module {
 class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
-        val flush = Input(Bool())
         val exec_wb = Decoupled(new MDU_WB)
     })
     val multiplier = Module(new Multiplier)
@@ -359,9 +355,9 @@ class MDU extends Module{
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
     io.isu_mdu.ready := io.exec_wb.fire() || !isu_mdu_fired
     
-    when (io.flush || (!io.isu_mdu.fire() && io.exec_wb.fire())) {
+    when ((!io.isu_mdu.fire() && io.exec_wb.fire())) {
         isu_mdu_fired:= false.B
-    } .elsewhen (!io.flush && io.isu_mdu.fire()) {
+    } .elsewhen (io.isu_mdu.fire()) {
         isu_mdu_fired := true.B
     }
 
