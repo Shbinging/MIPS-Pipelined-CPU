@@ -91,8 +91,8 @@ class ISU extends Module {
             io.isu_mdu.bits.rtData := reg_gpr_isu.rt_data
             io.isu_mdu.bits.rd := reg_id_isu.rd_addr
 
-            io.isu_lsu.bits.current_instr := reg_id_isu.current_instr
-            io.isu_lsu.bits.current_pc := reg_id_isu.pcNext - 4.U
+            io.isu_mdu.bits.current_instr := reg_id_isu.current_instr
+            io.isu_mdu.bits.current_pc := reg_id_isu.pcNext - 4.U
         }
     }
 
