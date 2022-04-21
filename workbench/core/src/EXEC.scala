@@ -11,6 +11,7 @@ class ALU extends Module{
     val io = IO{new Bundle{
         val isu_alu = Flipped(Decoupled(new ISU_ALU))
         val exec_wb = Decoupled(new ALU_WB)
+        val flush = Input(Bool())
     }}
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
@@ -76,11 +77,11 @@ class ALU extends Module{
     io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
-    io.exec_wb.valid := isu_alu_prepared  // 1 cycle 
+    io.exec_wb.valid := isu_alu_prepared && !io.flush // 1 cycle 
     //printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
-    when ((!io.isu_alu.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N
-    } .elsewhen (io.isu_alu.fire()) {
+    } .elsewhen (!io.flush && io.isu_alu.fire()) {
         isu_alu_prepared := Y
     }
 }
@@ -89,6 +90,7 @@ class BRU extends Module{
     val io = IO{new Bundle{
         val isu_bru = Flipped(Decoupled(new ISU_BRU))
         val exec_wb = Decoupled(new BRU_WB)
+        val flush = Input(Bool())
     }}    
     val isu_bur_fire = RegNext(false.B)
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
@@ -134,21 +136,22 @@ class BRU extends Module{
     }
 //bruwb.w_pc_addr := 
 
-    when ((!io.isu_bru.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_bru.fire() && io.exec_wb.fire())) {
         isu_bur_fire := N
-    } .elsewhen (io.isu_bru.fire()) {
+    } .elsewhen (!io.flush && io.isu_bru.fire()) {
         isu_bur_fire := Y
     }
     bruwb.current_pc := r.current_pc
     bruwb.current_instr := r.current_instr
     io.exec_wb.bits <> bruwb
-    io.exec_wb.valid := isu_bur_fire
+    io.exec_wb.valid := isu_bur_fire && !io.flush
 }
 
 class LSU extends Module{
     val io = IO{new Bundle{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
         val exec_wb = Decoupled(new LSU_WB)
+        val flush = Input(Bool())
     }}
     io.exec_wb.bits <> DontCare // FIXME
     //printf("io.exec_wb.valid %d io.isu_lsu.ready %d\n", io.exec_wb.valid, io.isu_lsu.ready)
@@ -158,9 +161,9 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    when ((!io.isu_lsu.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
-    } .elsewhen (io.isu_lsu.fire()) {
+    } .elsewhen (!io.flush && io.isu_lsu.fire()) {
         isu_lsu_fire := Y
         state_reg := LSU_DECODE
     }
@@ -194,7 +197,7 @@ class LSU extends Module{
     dev.io.in.req.valid := false.B
     dev.io.in.resp.ready := false.B
 	io.exec_wb.valid := false.B
-    //printf("state %d valid %d\n", state_reg, io.exec_wb.valid)
+
 	switch(state_reg){
 		is(LSU_DIE){
 			io.exec_wb.valid:=false.B
@@ -242,6 +245,9 @@ class LSU extends Module{
 			//     io.exec_wb.bits.w_data := DontCare
 			//     state_reg := LSU_DIE
             // }
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is(LSU_READ){
 			when(!read_reg.en){
@@ -258,6 +264,9 @@ class LSU extends Module{
 				exec_reg.preReadData := dev.io.in.resp.bits.data >> (read_reg.addr(1, 0) << 3)
 				dev.io.in.req.valid := false.B
 			}
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is (LSU_CALC){
 			when(exec_reg.preRead){
@@ -282,33 +291,42 @@ class LSU extends Module{
 				write_reg.w_data := r.rtData
 			}
 			state_reg := LSU_WRITE
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is (LSU_WRITE){
-			when(!write_reg.en){
-				back_reg.w_data := write_reg.w_data
-				state_reg := LSU_BACK
-			}.otherwise{
-                dev.io.in.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
-				dev.io.in.req.valid := true.B
-				dev.io.in.req.bits.addr := write_reg.addr & (~3.U(32.W))
+            when(io.flush){
+                state_reg := LSU_DIE
+            }.otherwise{
+			    when(!write_reg.en){
+				    back_reg.w_data := write_reg.w_data
+				    state_reg := LSU_BACK
+			    }.otherwise{
+                    dev.io.in.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
+				    dev.io.in.req.valid := true.B
+				    dev.io.in.req.bits.addr := write_reg.addr & (~3.U(32.W))
                 //printf("%x\n", dev.io.in.req.bits.addr)
-				dev.io.in.req.bits.func := MX_WR
-				dev.io.in.req.bits.strb := write_reg.strb
+				    dev.io.in.req.bits.func := MX_WR
+				    dev.io.in.req.bits.strb := write_reg.strb
                 //printf("strb %x\n", write_reg.strb)
-				dev.io.in.resp.ready := true.B
-				back_reg.w_data := DontCare
-			}
-			when(dev.io.in.resp.fire()){
-				state_reg := LSU_BACK
-				dev.io.in.req.valid := false.B
-			}
+				    dev.io.in.resp.ready := true.B
+				    back_reg.w_data := DontCare
+			    }
+			    when(dev.io.in.resp.fire()){
+				    state_reg := LSU_BACK
+				    dev.io.in.req.valid := false.B
+			    }
+            }
 		}
 		is (LSU_BACK){
             //printf("lsu ok\n");
-			io.exec_wb.valid := true.B
-			io.exec_wb.bits.w_addr := back_reg.w_addr
-			io.exec_wb.bits.w_en := back_reg.w_en
-			io.exec_wb.bits.w_data := back_reg.w_data
+            when(!io.flush){
+			    io.exec_wb.valid := isu_lsu_fire && !io.flush
+			    io.exec_wb.bits.w_addr := back_reg.w_addr
+			    io.exec_wb.bits.w_en := back_reg.w_en
+			    io.exec_wb.bits.w_data := back_reg.w_data
+            }
 			state_reg := LSU_DIE
 		}
 	}
@@ -344,11 +362,12 @@ class Multiplier extends Module {
     io.data_dout := pipe.bits
 }
 
-
+//FIXME io.flush时候，暂停当前过程
 class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
         val exec_wb = Decoupled(new MDU_WB)
+        val flush = Input(Bool())
     })
     val multiplier = Module(new Multiplier)
     val dividor = Module(new Divider)
@@ -357,9 +376,9 @@ class MDU extends Module{
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
     io.isu_mdu.ready := io.exec_wb.fire() || !isu_mdu_fired
     //printf("io.isu_mdu.ready %d isu_mdu_fired %d \n", io.isu_mdu.ready, isu_mdu_fired);
-    when ((!io.isu_mdu.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_mdu.fire() && io.exec_wb.fire())) {
         isu_mdu_fired:= false.B
-    } .elsewhen (io.isu_mdu.fire()) {
+    } .elsewhen (!io.flush && io.isu_mdu.fire()) {
         //printf("mdu is working!\n");
         isu_mdu_fired := true.B
     }
@@ -453,7 +472,7 @@ class MDU extends Module{
     mdu_wb_reg.current_pc := isu_mdu_reg.current_pc
     //printf("pc %x\n", isu_mdu_reg.current_pc)
     mdu_wb_reg.current_instr := isu_mdu_reg.current_instr
-    io.exec_wb.valid := mdu_wb_valid
+    io.exec_wb.valid := mdu_wb_valid && !io.flush
     io.exec_wb.bits <> mdu_wb_reg
     
 

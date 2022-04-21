@@ -21,14 +21,22 @@ class InstrFetch extends Module{
     dev.io.reset := reset.asBool()
     //printf(p"wb_if ${io.wb_if}\n")
     io.wb_if.ready := true.B
+    val flush = RegInit(N)
     val if_id_instr_prepared = RegInit(false.B)
-    when(io.wb_if.fire() && io.wb_if.bits.pc_w_en){
+    when(io.wb_if.fire()){
         printf("branch!\n")
         pc_reg := io.wb_if.bits.pc_w_data
-        if_id_instr_prepared := N
+        when(dev.io.in.req.ready){
+            flush := N
+        }.otherwise{
+            flush := Y
+        }
     } .elsewhen(dev.io.in.req.fire()){
         pc_reg := pc_reg + 4.U
     } 
+    when(dev.io.in.req.fire()){
+        printf("commit read %x\n", pc_reg)
+    }
     // printf(p"dev ready:${dev.io.in.req.ready}\n")    
     dev.io.in.req.bits.is_cached := DontCare
     dev.io.in.req.bits.strb := DontCare
@@ -39,28 +47,26 @@ class InstrFetch extends Module{
     dev.io.in.req.bits.addr := pc_reg
     dev.io.in.req.bits.len := 3.U   // 00, 01, 10, 11
     dev.io.in.req.valid := true.B && !io.flush
-    /*
-        FIXME 
-        branch之前已经下发的指令取出后必须销毁
-        在这里由于没有miss，所以通过dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared || io.flush
-        和io.if_id.valid := Mux(dev.io.in.resp.fire(), dev.io.in.resp.fire() && !io.flush, if_id_instr_prepared) 能确保在flush的那个周期销毁，
-        要记录一个时间戳，时间戳之前的指令全部销毁
-    */
-    
+
     val if_id_instr = RegEnable(dev.io.in.resp.bits.data, dev.io.in.resp.fire())
     val if_id_next_pc = RegEnable(request_pc + 4.U, dev.io.in.resp.fire())
-    dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared || io.flush
+    dev.io.in.resp.ready := io.if_id.ready || !if_id_instr_prepared
 
     when(io.flush || (!dev.io.in.resp.fire() && io.if_id.fire())){
-        if_id_instr_prepared := false.B
+        if_id_instr_prepared := N
     } .elsewhen(!io.flush && dev.io.in.resp.fire()){
-        if_id_instr_prepared := true.B
+        when(flush){
+            printf("flush wrong instr %x\n", dev.io.in.resp.bits.data)
+            flush := N
+            if_id_instr_prepared := N
+        }.otherwise{
+            if_id_instr_prepared := Y
+        }
     }
-    io.if_id.valid := Mux(dev.io.in.resp.fire(), dev.io.in.resp.fire() && !io.flush, if_id_instr_prepared)
-    io.if_id.bits.instr := Mux(dev.io.in.resp.fire(), dev.io.in.resp.bits.data, if_id_instr)
-    io.if_id.bits.pcNext := Mux(dev.io.in.resp.fire(), request_pc + 4.U, if_id_next_pc)
-
+    io.if_id.valid := if_id_instr_prepared && !io.flush
+    io.if_id.bits.instr := if_id_instr
+    io.if_id.bits.pcNext :=if_id_next_pc
     when(io.if_id.fire()){
-        printf("start executing: %x\n", request_pc)
+        printf("start executing: %x\n", request_pc - 4.U)
     }
 }
