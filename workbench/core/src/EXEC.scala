@@ -12,6 +12,7 @@ class ALU extends Module{
         val isu_alu = Flipped(Decoupled(new ISU_ALU))
         val exec_wb = Decoupled(new ALU_WB)
         val flush = Input(Bool())
+        val exec_pass = new ALU_PASS
     }}
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
@@ -77,6 +78,9 @@ class ALU extends Module{
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.valid := isu_alu_prepared && !io.flush // 1 cycle 
+    io.exec_pass.ALU_out := ALU_out
+    io.exec_pass.w_addr := r.rd_addr
+    io.exec_pass.w_en := isu_alu_prepared
     //printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
     when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N

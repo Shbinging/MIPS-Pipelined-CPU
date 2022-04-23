@@ -126,6 +126,12 @@ class ALU_WB extends Bundle{
     val current_instr = Output(UInt(conf.data_width.W))
 }
 
+class ALU_PASS extends Bundle{
+    val w_en = Output(Bool())
+    val w_addr = Output(UInt(REG_SZ.W))
+    val ALU_out = Output(UInt(32.W))
+}
+
 class BRU_WB extends Bundle{
     val w_en = Output(Bool())
     val w_addr = Output(UInt(REG_SZ.W))

@@ -48,7 +48,8 @@ class verilator_top extends Module {
     instr_shoot.io.id_isu <> instr_decode.io.id_isu
     instr_shoot.io.gpr_data <> gprs.io.read_out
     instr_shoot.io.rb_isu <> write_back.io.gpr_wr
-
+    instr_shoot.io.alu_pass <> alu.io.exec_pass
+    
     alu.io.isu_alu <> instr_shoot.io.isu_alu
     bru.io.isu_bru <> instr_shoot.io.isu_bru
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu

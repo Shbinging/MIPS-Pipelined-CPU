@@ -13,7 +13,7 @@ class ISU extends Module {
         val id_isu = Flipped(Decoupled(new ID_ISU)) //input
         val flush = Input(Bool())
         val rb_isu = new GPRWriteInput
-
+        val alu_pass = Flipped(new ALU_PASS)
         val isu_alu = Decoupled(new ISU_ALU) //output
         val isu_bru = Decoupled(new ISU_BRU)
         val isu_lsu = Decoupled(new ISU_LSU)
@@ -47,11 +47,13 @@ class ISU extends Module {
         }
     }
     def isValid(idx:UInt) = !dirtys(idx)
-    def isReadValid(idx:UInt) = !dirtys(idx) || rwConflict(idx)
+    def isReadValid(idx:UInt) = !dirtys(idx) || rwConflict(idx) || aluPass(idx)
     def rmDirty() = io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
+    def aluPassing() = io.alu_pass.w_en =/= 0.U && io.alu_pass.w_addr =/= 0.U
     def rwConflict(idx:UInt) = rmDirty() && (io.rb_isu.addr === idx)
-    def getData1(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rs_data)
-    def getData2(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rt_data)
+    def aluPass(idx:UInt) = aluPassing() && (io.alu_pass.w_addr === idx)
+    def getData1(idx:UInt) = Mux(aluPass(idx), io.alu_pass.ALU_out, Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rs_data))
+    def getData2(idx:UInt) = Mux(aluPass(idx), io.alu_pass.ALU_out, Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rt_data))
     //def getData1(idx:UInt) = io.gpr_data.rs_data
     //def getData2(idx:UInt) = io.gpr_data.rt_data
     val canLaunch = WireInit(N)
