@@ -49,21 +49,28 @@ class ISU extends Module {
     def isValid(idx:UInt) = !dirtys(idx)
     def getData1(idx:UInt) = io.gpr_data.rs_data
     def getData2(idx:UInt) = io.gpr_data.rt_data
-    def rmDirty() = !io.flush && io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
+    def rmDirty() = io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
     def rwConflict() = rmDirty() && ((io.rb_isu.addr === reg_id_isu.read1) || (io.rb_isu.addr === reg_id_isu.read2))
     val canLaunch = WireInit(N)
     val rsData, rtData = WireInit(0.U(32.W))
+    when(io.id_isu.fire()){
+        printf("ok\n");
+    }
     when(!rwConflict() && !io.flush && reg_id_isu_prepared && empty && isValid(reg_id_isu.read1) && isValid((reg_id_isu.read2)) && isValid(reg_id_isu.write)){
         when(reg_id_isu.write =/= 0.U){
             dirtys(reg_id_isu.write) := Y
         }
+        printf("launch %x\n", reg_id_isu.pcNext - 4.U)
         canLaunch := Y
         rsData := getData1(reg_id_isu.read1)
         rtData := getData2(reg_id_isu.read2)
     }.otherwise{
+        printf("%d %d %d %d %d\n",reg_id_isu_prepared, empty, isValid(reg_id_isu.read1) , isValid((reg_id_isu.read2)) ,isValid(reg_id_isu.write) )
+        printf("read1 %d\n", reg_id_isu.read1)
         canLaunch := N
     }    
     when(rmDirty()){
+        printf("rm dirty %d\n", io.rb_isu.addr)
         dirtys(io.rb_isu.addr) := 0.U
     }
     switch(reg_id_isu.exu){
