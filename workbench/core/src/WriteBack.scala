@@ -17,7 +17,8 @@ class WriteBack extends Module{
         val gpr_wr = Flipped(new GPRWriteInput)
     })
     val time = RegInit(0.U(32.W))
-    time := time + 1.U
+
+
     io.alu_wb.ready := true.B
     io.bru_wb.ready := true.B
     io.lsu_wb.ready := true.B
@@ -32,6 +33,10 @@ class WriteBack extends Module{
     val reg_mdu_wb = RegEnable(io.mdu_wb.bits, io.mdu_wb.fire())
     val io_fire = Wire(Bool())
     io_fire := io.alu_wb.fire() || io.bru_wb.fire() || io.lsu_wb.fire() || io.mdu_wb.fire()
+    when(io_fire){
+        time := time + 1.U
+        printf(p"commit sum:${time}\n")
+    }
     // printf(p"wb working\n\n")
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
