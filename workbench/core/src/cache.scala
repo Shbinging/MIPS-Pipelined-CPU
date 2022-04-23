@@ -48,6 +48,10 @@ class L1Cache extends Module{
     io.in.resp.valid := false.B
     io.in.resp.bits <> DontCare
 
+    when(cache(index).valid){
+        printf(p"${index} - cache line data: ${cache(index).data}\n")
+    }
+
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
         val tag_fire = io.in.req.bits.addr(conf.addr_width-1, conf.cache_line_width)
@@ -62,31 +66,36 @@ class L1Cache extends Module{
             }
         }
     }
-    when(state===1.U){  // req ready, read data?
-        printf("state 1\n")
+    when(state===1.U){  // cache hit
+        // printf("state 1\n")
         io.in.resp.valid := true.B
         when(req_data.func===MX_RD){
+            printf(p"load ${index}-${offset}: ${req_data.addr}\n")
             io.in.resp.bits.data := Cat(
                 Cat(Mux(req_data.len==="b11".U, cache(index).data(offset+3.U), 0.U(8.W)),
                     Mux(req_data.len >="b10".U, cache(index).data(offset+2.U), 0.U(8.W))),
                 Cat(Mux(req_data.len >="b01".U, cache(index).data(offset+1.U), 0.U(8.W)),
                     Mux(req_data.len >="b00".U, cache(index).data(offset+0.U), 0.U(8.W)))
             )
-            printf(p"length: ${req_data.len} ${offset} ${io.in.resp.bits.data}\n")
-            printf(p"${index}: ${cache(index).data(0.U)}, ${cache(index).data(1.U)}, ${cache(index).data(2.U)}, ${cache(index).data(3.U)}\n")
+            // printf(p"length: ${req_data.len} ${offset} ${io.in.resp.bits.data}\n")
+            // printf(p"${index}: ${cache(index).data(0.U)}, ${cache(index).data(1.U)}, ${cache(index).data(2.U)}, ${cache(index).data(3.U)}\n")
         } .otherwise{   // WR
-            for(i <- 3 to 0){
-                when(req_data.strb(i)){
+            // printf(p"store ${index}-${offset}: ${req_data.addr}\n")
+            for(i <- 0 to 3){
+                when(req_data.strb(i).asBool()){
+                    // printf(p"${i.U}-")
                     cache(index).data(offset+i.U) := req_data.data((i+1)*8-1, i*8)
                 }
             }
+            // printf(p"strb: ${req_data.strb}\n")
+            // printf(p"st data is: ${req_data.data}\n")
             cache(index).dirty := true.B
         }
         when(io.in.resp.fire() && !io.in.req.fire()){
             state := 0.U
         }
     } .elsewhen(state===2.U){  // write back 
-        printf("state 2\n")
+        // printf("state 2\n")
         io.out.req.bits.func := MX_WR
         io.out.req.bits.addr := (cache(index).tag.asUInt()<<conf.cache_line_width) + line_count
         io.out.req.bits.len := 3.U 
@@ -101,7 +110,7 @@ class L1Cache extends Module{
             state := 3.U
         }
     } .elsewhen(state===3.U){   // read 
-        printf(p"state 3, ${line_count}/${conf.cache_line_size.U}\n")
+        // printf(p"state 3, ${line_count}/${conf.cache_line_size.U}\n")
         io.out.req.bits.func := MX_RD
         io.out.req.bits.addr := (tag.asUInt()<<conf.cache_line_width) + line_count
         io.out.req.bits.len := 3.U 
@@ -117,11 +126,11 @@ class L1Cache extends Module{
             cache(index).data(line_count-2.U) := io.out.resp.bits.data(23, 16)
             cache(index).data(line_count-3.U) := io.out.resp.bits.data(15, 8)
             cache(index).data(line_count-4.U) := io.out.resp.bits.data(7, 0)
-            printf(p"READ ${index}-${line_count-4.U}: ${io.out.resp.bits.data(7,0)}, ${io.out.resp.bits.data(15,8)}, ${io.out.resp.bits.data(23,16)}, ${io.out.resp.bits.data(31, 24)}\n")
+            // printf(p"READ ${index}-${line_count-4.U}: ${io.out.resp.bits.data(7,0)}, ${io.out.resp.bits.data(15,8)}, ${io.out.resp.bits.data(23,16)}, ${io.out.resp.bits.data(31, 24)}\n")
             // printf(p"${index}: ${line_count-4.U} read: ${io.out.resp.bits.data}\n")
-            printf(p"RD${index}: ${cache(index).data(0.U)}, ${cache(index).data(1.U)}, ${cache(index).data(2.U)}, ${cache(index).data(3.U)}\n")
+            // printf(p"RD${index}: ${cache(index).data(0.U)}, ${cache(index).data(1.U)}, ${cache(index).data(2.U)}, ${cache(index).data(3.U)}\n")
             when(line_count===(conf.cache_line_size/8).U){
-                printf(p" state 3 done!\n")
+                // printf(p" state 3 done!\n")
                 cache(index).valid := true.B 
                 cache(index).tag := tag 
                 cache(index).dirty := false.B
