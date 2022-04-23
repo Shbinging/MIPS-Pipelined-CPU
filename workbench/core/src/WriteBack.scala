@@ -65,6 +65,9 @@ class WriteBack extends Module{
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr
         io.commit.commit := true.B
+        io.gpr_wr.addr := reg_bru_wb.w_addr
+        io.gpr_wr.data := reg_bru_wb.w_data
+        io.gpr_wr.w_en := Mux(reg_bru_wb.w_en, "b1111".U, 0.U)
         printf("bru wb %x\n", io.commit.commit_pc);
     }.elsewhen(lsu_wb_fire){
         io.gpr_wr.addr := reg_lsu_wb.w_addr

@@ -130,6 +130,9 @@ class BRU extends Module{
         // }
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
+        when(r.bru_op === BRU_JAL_OP){
+            printf("jal ok %d\n", bruwb.w_data);
+        }
         bruwb.w_en := true.B
         bruwb.w_addr := Mux(r.bru_op===BRU_JALR_OP, r.rd, 31.U)
         bruwb.w_data := r.pcNext + 4.U
@@ -161,11 +164,13 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
+    printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
     when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
     } .elsewhen (!io.flush && io.isu_lsu.fire()) {
         isu_lsu_fire := Y
         state_reg := LSU_DECODE
+        printf("state_reg %d\n", LSU_DECODE)
     }
 
 	val back_reg = Reg(new Bundle{
@@ -200,9 +205,11 @@ class LSU extends Module{
 
 	switch(state_reg){
 		is(LSU_DIE){
+            printf("state:LSU DIE\n")
 			io.exec_wb.valid:=false.B
 		}
 		is(LSU_DECODE){
+            printf("state:LSU_DECODE\n");
 			val vAddr = Wire(UInt(32.W))
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
             val offset = Wire(UInt(2.W))
@@ -250,6 +257,7 @@ class LSU extends Module{
             }
 		}
 		is(LSU_READ){
+            printf("state:LSU_READ\n");
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
@@ -269,6 +277,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_CALC){
+            printf("state:LSU_CALC\n");
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
@@ -320,14 +329,17 @@ class LSU extends Module{
             }
 		}
 		is (LSU_BACK){
-            //printf("lsu ok\n");
+            printf("state:LSU_BACK\n");
+            printf("lsu ok\n");
             when(!io.flush){
 			    io.exec_wb.valid := isu_lsu_fire && !io.flush
 			    io.exec_wb.bits.w_addr := back_reg.w_addr
 			    io.exec_wb.bits.w_en := back_reg.w_en
 			    io.exec_wb.bits.w_data := back_reg.w_data
             }
-			state_reg := LSU_DIE
+            when(!(!io.flush && io.isu_lsu.fire())){
+                state_reg := LSU_DIE
+            }
 		}
 	}
 
