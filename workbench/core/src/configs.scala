@@ -19,5 +19,5 @@ object conf {
   val cache_line_width = 4
   val cache_line_size = 8 * (1<<cache_line_width) // 16 Bytes
   val L1_index_width = 10 // 1024 lines
-  val L1_cache_size = (1<<10) * cache_line_size // 16KB
+  val L1_cache_size = (1<<L1_index_width) * cache_line_size // 16KB
 }

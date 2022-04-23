@@ -39,12 +39,12 @@ bool DiffTop::check_states() {
 		noop_cycles, napi_get_instr(),
 		dut_ptr->io_commit_instr);
 
-	if (last_instr_is_store) {
-	uint32_t nemu_ls_data = napi_mmio_peek(ls_addr, 4);
-	check_eq(nemu_ls_data, ls_data,
-		"cycle %lu: M[%08x]: nemu:%08x <> dut:%08x\n",
-		noop_cycles, ls_addr, nemu_ls_data, ls_data);
-	}
+	// if (last_instr_is_store) {
+	// uint32_t nemu_ls_data = napi_mmio_peek(ls_addr, 4);
+	// check_eq(nemu_ls_data, ls_data,
+	// 	"cycle %lu: M[%08x]: nemu:%08x <> dut:%08x\n",
+	// 	noop_cycles, ls_addr, nemu_ls_data, ls_data);
+	// }
 
 #define GPR_TEST(i)                                     \
 	check_eq(napi_get_gpr(i), dut_ptr->io_commit_gpr_##i, \

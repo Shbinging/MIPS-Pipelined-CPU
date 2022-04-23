@@ -52,6 +52,9 @@ class verilator_top extends Module {
     instr_fetch.io.wb_if <> write_back.io.wb_if
     icache.io.in <> instr_fetch.io.icache
     imem.io.in <> icache.io.out
+    when(icache.io.out.req.fire()){
+      printf(p"icache: ${icache.io.out.req.bits}\n")
+    }
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
 
@@ -71,7 +74,10 @@ class verilator_top extends Module {
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
     dcache.io.in <> lsu.io.dcache
     dmem.io.in <> dcache.io.out
-    
+    when(dcache.io.out.req.fire()){
+      printf(p"dcache: ${dcache.io.out.req.bits}\n")
+    }
+
     mdu.io.isu_mdu <> instr_shoot.io.isu_mdu
 
     write_back.io.alu_wb <> alu.io.exec_wb

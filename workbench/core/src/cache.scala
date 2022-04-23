@@ -48,9 +48,9 @@ class L1Cache extends Module{
     io.in.resp.valid := false.B
     io.in.resp.bits <> DontCare
 
-    when(cache(index).valid){
-        printf(p"${index} - cache line data: ${cache(index).data}\n")
-    }
+    // when(cache(index).valid){
+    //     printf(p"${index} - cache line data: ${cache(index).data}\n")
+    // }
 
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
@@ -101,8 +101,10 @@ class L1Cache extends Module{
         io.out.req.bits.len := 3.U 
         io.out.req.bits.strb := "b1111".U
         io.out.req.valid := true.B
+        io.out.resp.ready := true.B
         // TODO: cistern 
         when(io.out.req.fire()){
+            // printf(p"write back to${(cache(index).tag.asUInt()<<conf.cache_line_width) + line_count}\n")
             line_count := line_count + 4.U
         }
         when(io.out.resp.fire() && line_count===(conf.cache_line_size/8).U){
