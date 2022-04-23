@@ -42,7 +42,10 @@ class verilator_top extends Module {
     instr_fetch.io.flush := write_back.io.flush
     instr_decode.io.flush := write_back.io.flush 
     instr_shoot.io.flush := write_back.io.flush 
-
+    bru.io.flush := write_back.io.flush
+    mdu.io.flush := write_back.io.flush
+    lsu.io.flush := write_back.io.flush
+    alu.io.flush := write_back.io.flush
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
     imem.io.clock := clock 
     imem.io.reset := reset.asBool()
@@ -51,11 +54,13 @@ class verilator_top extends Module {
     imem.io.in <> icache.io.out
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
-    
-    gprs.io.read_in <> instr_decode.io.out_gpr_read
+
+    gprs.io.read_in <> instr_shoot.io.out_gpr_read
     
     instr_shoot.io.id_isu <> instr_decode.io.id_isu
     instr_shoot.io.gpr_data <> gprs.io.read_out
+    instr_shoot.io.rb_isu <> write_back.io.gpr_wr
+    instr_shoot.io.alu_pass <> alu.io.exec_pass
     
     alu.io.isu_alu <> instr_shoot.io.isu_alu
     

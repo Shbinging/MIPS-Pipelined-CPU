@@ -8,7 +8,8 @@ class CacheLine extends Bundle{
     val valid = Bool()
     val dirty = Bool()
     val tag = UInt((conf.addr_width - conf.cache_line_width).W)
-    val data = Mem(1<<conf.cache_line_width, UInt(8.W))
+    // val data = Vec.fill(1<<conf.cache_line_width){0.U(8.W)}// Mem(1<<conf.cache_line_width, UInt(8.W))
+    val data = Vec(1<<conf.cache_line_width, UInt(8.W))
 }
 
 class L1Cache extends Module{
@@ -21,7 +22,10 @@ class L1Cache extends Module{
 
     io.in.req.ready := io.in.resp.fire() | (state===0.U)
 
-    val cache = Mem(1<<conf.L1_index_width, Reg(new CacheLine))
+    val cache = Mem(1<<conf.L1_index_width, new CacheLine)// Reg(Vec(1<<conf.L1_index_width, new CacheLine))
+    // val cache = Reg(Vec.fill(1<<conf.L1_index_width){Module(new CacheLine)})
+    // Mem(1<<conf.L1_index_width, new CacheLine)
+
 
     when(reset.asBool()){
         for(i <- 0 to (1<<conf.cache_line_width)-1){

@@ -35,27 +35,21 @@ class WriteBack extends Module{
     // printf(p"wb working\n\n")
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
-    //printf("mdu wb %d\n", mdu_wb_fire)
-    //printf("alu wb %d\n", alu_wb_fire)
-    val bru_wb_prepared = RegInit(N)
-    when(!io.bru_wb.fire() && io.wb_if.fire()){
-        bru_wb_prepared := false.B
-    }.elsewhen(io.bru_wb.bits.w_pc_en && io.bru_wb.fire()){
-        bru_wb_prepared := true.B
-    }
-    io.wb_if.valid := bru_wb_prepared
-    /*
-     FIXME 
-     当出现连续两个branch的时候，在第一个branch的WB阶段，第二个branch的延迟槽位于ISU阶段，会被flush掉
-    */
-    
-    val flush = RegNext(io.bru_wb.fire() & io.bru_wb.bits.w_pc_en, init = N)
-    io.flush := flush  // 
-
-    //printf(p"flush: ${io.flush}\n")
-    // no branch
-    io.wb_if.bits.pc_w_data <> DontCare
+     io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
+
+    val isBranch = RegEnable(io.bru_wb.bits.w_pc_en && io.bru_wb.fire(), N, io_fire)
+    val needJump = RegNext(isBranch && io_fire, N)
+    when(needJump){
+        io.flush := Y
+        io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
+        io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
+        io.wb_if.valid := Y
+    }.otherwise{
+        io.wb_if.valid := N
+        io.flush := N
+    }
+
     io.commit <> DontCare
     io.commit.commit := false.B
     when(alu_wb_fire){
@@ -67,22 +61,18 @@ class WriteBack extends Module{
         io.commit.commit := true.B
         printf("alu wb %x\n", io.commit.commit_pc);
         //printf(p"${time}: alu wb\n")
-    }.elsewhen(bru_wb_fire){//XXX:when don't branch, need commit?
-        io.gpr_wr.addr := reg_bru_wb.w_addr
-        io.gpr_wr.data := reg_bru_wb.w_data
-        io.gpr_wr.w_en := Mux(reg_bru_wb.w_en, "b1111".U, 0.U)
-        //printf(p"${time}: gpr w_en ${io.gpr_wr.w_en}, data ${io.gpr_wr.data}\n")
-        io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
-        io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
+    }.elsewhen(bru_wb_fire){
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr
         io.commit.commit := true.B
+        io.gpr_wr.addr := reg_bru_wb.w_addr
+        io.gpr_wr.data := reg_bru_wb.w_data
+        io.gpr_wr.w_en := Mux(reg_bru_wb.w_en, "b1111".U, 0.U)
         printf("bru wb %x\n", io.commit.commit_pc);
     }.elsewhen(lsu_wb_fire){
         io.gpr_wr.addr := reg_lsu_wb.w_addr
         io.gpr_wr.data := reg_lsu_wb.w_data
         io.gpr_wr.w_en := reg_lsu_wb.w_en // Mux(reg_lsu_wb.w_en, "b1111".U, 0.U)
-        io.wb_if.bits.pc_w_en := false.B
         io.commit.commit_pc := reg_lsu_wb.current_pc
         io.commit.commit_instr := reg_lsu_wb.current_instr
         io.commit.commit := true.B
@@ -94,7 +84,6 @@ class WriteBack extends Module{
         io.gpr_wr.w_en := Mux(reg_mdu_wb.w_en, "b1111".U, 0.U)
         //printf(p"w_en: ${io.gpr_wr.w_en} w_data: ${io.gpr_wr.data}\n")
         printf("commit %x\n", reg_mdu_wb.current_pc)
-        io.wb_if.bits.pc_w_data := false.B
         io.commit.commit_pc := reg_mdu_wb.current_pc
         io.commit.commit_instr := reg_mdu_wb.current_instr
         io.commit.commit := true.B

@@ -11,11 +11,12 @@ class ALU extends Module{
     val io = IO{new Bundle{
         val isu_alu = Flipped(Decoupled(new ISU_ALU))
         val exec_wb = Decoupled(new ALU_WB)
+        val flush = Input(Bool())
+        val exec_pass = new ALU_PASS
     }}
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
-    
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
     val ALU_op = WireInit(r.alu_op)
@@ -76,11 +77,14 @@ class ALU extends Module{
     io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
-    io.exec_wb.valid := isu_alu_prepared  // 1 cycle 
+    io.exec_wb.valid := isu_alu_prepared && !io.flush // 1 cycle 
+    io.exec_pass.ALU_out := ALU_out
+    io.exec_pass.w_addr := r.rd_addr
+    io.exec_pass.w_en := isu_alu_prepared
     //printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
-    when ((!io.isu_alu.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N
-    } .elsewhen (io.isu_alu.fire()) {
+    } .elsewhen (!io.flush && io.isu_alu.fire()) {
         isu_alu_prepared := Y
     }
 }
@@ -89,6 +93,7 @@ class BRU extends Module{
     val io = IO{new Bundle{
         val isu_bru = Flipped(Decoupled(new ISU_BRU))
         val exec_wb = Decoupled(new BRU_WB)
+        val flush = Input(Bool())
     }}    
     val isu_bur_fire = RegNext(false.B)
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
@@ -128,21 +133,24 @@ class BRU extends Module{
         // }
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
+        when(r.bru_op === BRU_JAL_OP){
+            printf("jal ok %d\n", bruwb.w_data);
+        }
         bruwb.w_en := true.B
         bruwb.w_addr := Mux(r.bru_op===BRU_JALR_OP, r.rd, 31.U)
         bruwb.w_data := r.pcNext + 4.U
     }
 //bruwb.w_pc_addr := 
 
-    when ((!io.isu_bru.fire() && io.exec_wb.fire())) {
+    when (io.flush || (!io.isu_bru.fire() && io.exec_wb.fire())) {
         isu_bur_fire := N
-    } .elsewhen (io.isu_bru.fire()) {
+    } .elsewhen (!io.flush && io.isu_bru.fire()) {
         isu_bur_fire := Y
     }
     bruwb.current_pc := r.current_pc
     bruwb.current_instr := r.current_instr
     io.exec_wb.bits <> bruwb
-    io.exec_wb.valid := isu_bur_fire
+    io.exec_wb.valid := isu_bur_fire && !io.flush
 }
 
 class LSU extends Module{
@@ -150,6 +158,7 @@ class LSU extends Module{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
         val dcache = new MemIO
         val exec_wb = Decoupled(new LSU_WB)
+        val flush = Input(Bool())
     }}
     io.exec_wb.bits <> DontCare // FIXME
     //printf("io.exec_wb.valid %d io.isu_lsu.ready %d\n", io.exec_wb.valid, io.isu_lsu.ready)
@@ -159,11 +168,13 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    when ((!io.isu_lsu.fire() && io.exec_wb.fire())) {
+    printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
+    when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
-    } .elsewhen (io.isu_lsu.fire()) {
+    } .elsewhen (!io.flush && io.isu_lsu.fire()) {
         isu_lsu_fire := Y
         state_reg := LSU_DECODE
+        printf("state_reg %d\n", LSU_DECODE)
     }
 
 	val back_reg = Reg(new Bundle{
@@ -194,12 +205,14 @@ class LSU extends Module{
     io.dcache.req.valid := false.B
     io.dcache.resp.ready := false.B
 	io.exec_wb.valid := false.B
-    //printf("state %d valid %d\n", state_reg, io.exec_wb.valid)
+
 	switch(state_reg){
 		is(LSU_DIE){
+            printf("state:LSU DIE\n")
 			io.exec_wb.valid:=false.B
 		}
 		is(LSU_DECODE){
+            printf("state:LSU_DECODE\n");
 			val vAddr = Wire(UInt(32.W))
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
             val offset = Wire(UInt(2.W))
@@ -242,8 +255,12 @@ class LSU extends Module{
 			//     io.exec_wb.bits.w_data := DontCare
 			//     state_reg := LSU_DIE
             // }
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is(LSU_READ){
+            printf("state:LSU_READ\n");
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
@@ -258,8 +275,12 @@ class LSU extends Module{
 				exec_reg.preReadData := io.dcache.resp.bits.data >> (read_reg.addr(1, 0) << 3)
 				io.dcache.req.valid := false.B
 			}
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is (LSU_CALC){
+            printf("state:LSU_CALC\n");
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
@@ -282,34 +303,46 @@ class LSU extends Module{
 				write_reg.w_data := r.rtData
 			}
 			state_reg := LSU_WRITE
+            when(io.flush){
+                state_reg := LSU_DIE
+            }
 		}
 		is (LSU_WRITE){
-			when(!write_reg.en){
-				back_reg.w_data := write_reg.w_data
-				state_reg := LSU_BACK
-			}.otherwise{
-                io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
-				io.dcache.req.valid := true.B
-				io.dcache.req.bits.addr := write_reg.addr & (~3.U(32.W))
+            when(io.flush){
+                state_reg := LSU_DIE
+            }.otherwise{
+			    when(!write_reg.en){
+				    back_reg.w_data := write_reg.w_data
+				    state_reg := LSU_BACK
+			    }.otherwise{
+                    io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
+				    io.dcache.req.valid := true.B
+				    io.dcache.req.bits.addr := write_reg.addr & (~3.U(32.W))
                 //printf("%x\n", io.dcache.req.bits.addr)
-				io.dcache.req.bits.func := MX_WR
-				io.dcache.req.bits.strb := write_reg.strb
+				    io.dcache.req.bits.func := MX_WR
+				    io.dcache.req.bits.strb := write_reg.strb
                 //printf("strb %x\n", write_reg.strb)
-				io.dcache.resp.ready := true.B
-				back_reg.w_data := DontCare
-			}
-			when(io.dcache.resp.fire()){
-				state_reg := LSU_BACK
-				io.dcache.req.valid := false.B
-			}
+				    io.dcache.resp.ready := true.B
+				    back_reg.w_data := DontCare
+			    }
+			    when(io.dcache.resp.fire()){
+				    state_reg := LSU_BACK
+				    io.dcache.req.valid := false.B
+			    }
+            }
 		}
 		is (LSU_BACK){
-            //printf("lsu ok\n");
-			io.exec_wb.valid := true.B
-			io.exec_wb.bits.w_addr := back_reg.w_addr
-			io.exec_wb.bits.w_en := back_reg.w_en
-			io.exec_wb.bits.w_data := back_reg.w_data
-			state_reg := LSU_DIE
+            printf("state:LSU_BACK\n");
+            printf("lsu ok\n");
+            when(!io.flush){
+			    io.exec_wb.valid := isu_lsu_fire && !io.flush
+			    io.exec_wb.bits.w_addr := back_reg.w_addr
+			    io.exec_wb.bits.w_en := back_reg.w_en
+			    io.exec_wb.bits.w_data := back_reg.w_data
+            }
+            when(!(!io.flush && io.isu_lsu.fire())){
+                state_reg := LSU_DIE
+            }
 		}
 	}
 
@@ -344,120 +377,133 @@ class Multiplier extends Module {
     io.data_dout := pipe.bits
 }
 
-
+//FIXME io.flush时候，暂停当前过程
 class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
         val exec_wb = Decoupled(new MDU_WB)
+        val flush = Input(Bool())
     })
     val multiplier = Module(new Multiplier)
     val dividor = Module(new Divider)
     
-    val isu_mdu_fired = RegInit(false.B)
+    // isu_mdu_fired 
+    val state = RegInit(0.U)
     val isu_mdu_reg = RegEnable(io.isu_mdu.bits, io.isu_mdu.fire())
-    io.isu_mdu.ready := io.exec_wb.fire() || !isu_mdu_fired
+    io.isu_mdu.ready := io.exec_wb.fire() || (state===0.U)
     //printf("io.isu_mdu.ready %d isu_mdu_fired %d \n", io.isu_mdu.ready, isu_mdu_fired);
-    when ((!io.isu_mdu.fire() && io.exec_wb.fire())) {
-        isu_mdu_fired:= false.B
-    } .elsewhen (io.isu_mdu.fire()) {
+    when (io.flush || (!io.isu_mdu.fire() && io.exec_wb.fire())) {
+        state := 0.U
+    } .elsewhen (!io.flush && io.isu_mdu.fire()) {
         //printf("mdu is working!\n");
-        isu_mdu_fired := true.B
+        state := 1.U
     }
 
-    val mdu_wb_valid = RegInit(false.B)
+    // when(io.isu_mdu.fire()){
+    //     printf(p"#### ${io.exec_wb.fire()} or ${!isu_mdu_fired}\n")
+    //     printf(p"${io.isu_mdu}\n")
+    // }
+
+    // val mdu_wb_valid = RegInit(false.B)
     val mdu_wb_reg = Reg(new MDU_WB)
 
     val hi = RegInit(0.U(32.W))
     val lo = RegInit(0.U(32.W))
-    
+    // printf(p"LO: ${lo}\n")
     val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 7
-
-
-    when(isu_mdu_fired){
+    // printf(p"dividor ready: ${dividor_ready}\n")
+    // printf(p"isu mud reg: ${isu_mdu_reg}\n")
+    dividor.io <> DontCare
+    dividor.io.data_dividend_valid := false.B
+    dividor.io.data_divisor_valid := false.B
+    multiplier.io <> DontCare
+    when(state===1.U & !io.flush){
+        printf("start working on ")
         // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
-        dividor.io.data_dividend_valid := VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
-        dividor.io.data_divisor_valid := VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
-        // DIV or DIVU
-        dividor.io.data_dividend_bits := Cat(
-            Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rsData(31)), 0.U(8.W)),
-            isu_mdu_reg.rsData
-        )
-        dividor.io.data_divisor_bits := Cat(
-            Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rtData(31)), 0.U(8.W)),
-            isu_mdu_reg.rtData
-        )
-        when(dividor.io.data_dividend_valid & dividor.io.data_divisor_valid){
-            //printf(p"${dividor.io.data_dividend_bits} / ${dividor.io.data_divisor_bits}\n")
-        }
-
-        val is_mul = VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)
-        multiplier_delay_count := Mux(is_mul && multiplier_delay_count===conf.mul_stages.U(3.W), (conf.mul_stages-1).U(3.W), (conf.mul_stages).U(3.W))
-        multiplier.io.data_a := Cat(
-            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rsData(31)),
-            isu_mdu_reg.rsData
-        )
-        multiplier.io.data_b := Cat(
-            Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rtData(31)),
-            isu_mdu_reg.rtData
-        )
-        
-        mdu_wb_reg.w_en := VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)
-        mdu_wb_reg.w_addr := isu_mdu_reg.rd 
-        mdu_wb_reg.w_data := Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)
-        hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
-        lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
-
-        when(VecInit(MDU_MTHI_OP, MDU_MTLO_OP, MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
-            mdu_wb_valid := true.B
+        // mdu_wb_valid := false.B
+        when(VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)){
+            printf("div\n")
+            // div
+            dividor.io.data_dividend_valid := true.B
+            dividor.io.data_divisor_valid := true.B
+            dividor.io.data_dividend_bits := Cat(
+                Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rsData(31)), 0.U(8.W)),
+                isu_mdu_reg.rsData
+            )
+            dividor.io.data_divisor_bits := Cat(
+                Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rtData(31)), 0.U(8.W)),
+                isu_mdu_reg.rtData
+            )
+            state := 3.U
+        } .elsewhen(VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
+            printf("mul\n")
+            // mul
+            multiplier_delay_count := (conf.mul_stages-1).U(3.W)
+            multiplier.io.data_a := Cat(
+                Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rsData(31)),
+                isu_mdu_reg.rsData
+            )
+            multiplier.io.data_b := Cat(
+                Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rtData(31)),
+                isu_mdu_reg.rtData
+            )
+            state := 2.U
         } .otherwise{
-            mdu_wb_valid := false.B
+            printf(p"mf/mt hi:${hi}, lo:${lo}\n")
+            // mfhi, mflo
+            mdu_wb_reg.w_en := false.B
+            when(VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
+                mdu_wb_reg.w_en := true.B
+                mdu_wb_reg.w_addr := isu_mdu_reg.rd 
+                mdu_wb_reg.w_data := Mux(isu_mdu_reg.mdu_op===MDU_MFHI_OP, hi, lo)
+            }
+            hi := Mux(isu_mdu_reg.mdu_op===MDU_MTHI_OP, isu_mdu_reg.rsData, hi)
+            lo := Mux(isu_mdu_reg.mdu_op===MDU_MTLO_OP, isu_mdu_reg.rsData, lo)
+            state := 4.U
         }
-    } .otherwise{
-        dividor.io <> DontCare
-        dividor.io.data_dividend_valid := false.B
-        dividor.io.data_divisor_valid := false.B
-        multiplier.io <> DontCare
-    }
-
-    when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
-        multiplier_delay_count := conf.mul_stages.U(3.W)
-        mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
-        mdu_wb_valid := true.B
-        when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
-            val hi_lo = Cat(hi, lo) + multiplier.io.data_dout(63, 0)
-            hi := hi_lo(63, 32)
-            lo := hi_lo(31, 0)
-        } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
-            val hi_lo = Cat(hi, lo) - multiplier.io.data_dout(63, 0)
-            hi := hi_lo(63, 32)
-            lo := hi_lo(31, 0)
-        } .elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
-            mdu_wb_reg.w_addr := isu_mdu_reg.rd
-            mdu_wb_reg.w_data := multiplier.io.data_dout(31, 0)
-        }.otherwise{
-            hi := multiplier.io.data_dout(63, 32)
-            lo := multiplier.io.data_dout(31, 0)
-        }
-    }
-    when(dividor.io.data_dout_valid){
-        mdu_wb_reg.w_en := false.B 
-        mdu_wb_valid := true.B
-        lo := dividor.io.data_dout_bits(71, 40)
-        hi := dividor.io.data_dout_bits(31, 0)  
-    }
-
-    when(multiplier_delay_count =/= conf.mul_stages.U(3.W)){
+    } .elsewhen(state===2.U){
+        printf("multipling \n")
         multiplier_delay_count := multiplier_delay_count - 1.U
+        when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
+            printf("touch! delay 0\n")
+            multiplier_delay_count := conf.mul_stages.U(3.W)
+            mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
+            state := 4.U
+            when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
+                val hi_lo = Cat(hi, lo) + multiplier.io.data_dout(63, 0)
+                hi := hi_lo(63, 32)
+                lo := hi_lo(31, 0)
+            } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
+                val hi_lo = Cat(hi, lo) - multiplier.io.data_dout(63, 0)
+                hi := hi_lo(63, 32)
+                lo := hi_lo(31, 0)
+            } .elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
+                mdu_wb_reg.w_addr := isu_mdu_reg.rd
+                mdu_wb_reg.w_data := multiplier.io.data_dout(31, 0)
+            }.otherwise{
+                hi := multiplier.io.data_dout(63, 32)
+                lo := multiplier.io.data_dout(31, 0)
+            }
+        }
+    } .elsewhen(state===3.U){
+        printf("dividing!\n")
+        when(dividor.io.data_dout_valid){ //VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
+            printf("touch! dividor done 0\n")
+            mdu_wb_reg.w_en := false.B 
+            // mdu_wb_valid := true.B
+            lo := dividor.io.data_dout_bits(71, 40)
+            hi := dividor.io.data_dout_bits(31, 0) 
+            state := 4.U 
+        }
     }
+
     //printf("count:%d\n", multiplier_delay_count)
     mdu_wb_reg.current_pc := isu_mdu_reg.current_pc
     //printf("pc %x\n", isu_mdu_reg.current_pc)
     mdu_wb_reg.current_instr := isu_mdu_reg.current_instr
-    io.exec_wb.valid := mdu_wb_valid
+    io.exec_wb.valid := (state===4.U) && !io.flush
     io.exec_wb.bits <> mdu_wb_reg
-    
-
-    when(io.exec_wb.fire()){
-        mdu_wb_valid := false.B
+    when(io.exec_wb.valid){
+        printf(p"mdu->wb-bits: ${io.exec_wb.bits}\n reg ${mdu_wb_reg}\n")
     }
 }
