@@ -28,12 +28,13 @@ class InstrFetch extends Module{
         pc_reg := io.wb_if.bits.pc_w_data
         if_id_instr_prepared := N
     } .elsewhen(io.icache.req.fire()){
+        printf("read instr!\n")
         pc_reg := pc_reg + 4.U
     } 
     // printf(p"dev ready:${io.icache.req.ready}\n")    
     io.icache.req.bits.is_cached := DontCare
-    io.icache.in.req.bits.strb := DontCare
-    io.icache.in.req.bits.data := DontCare
+    io.icache.req.bits.strb := DontCare
+    io.icache.req.bits.data := DontCare
 
     val request_pc = RegEnable(pc_reg, io.icache.req.fire())
     io.icache.req.bits.func := MX_RD
@@ -55,6 +56,7 @@ class InstrFetch extends Module{
     when(io.flush || (!io.icache.resp.fire() && io.if_id.fire())){
         if_id_instr_prepared := false.B
     } .elsewhen(!io.flush && io.icache.resp.fire()){
+        printf(p"instr: ${io.icache.resp.bits.data} @ ${request_pc}\n")
         if_id_instr_prepared := true.B
     }
     io.if_id.valid := Mux(io.icache.resp.fire(), io.icache.resp.fire() && !io.flush, if_id_instr_prepared)

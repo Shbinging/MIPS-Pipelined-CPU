@@ -190,8 +190,7 @@ class LSU extends Module{
 	// val dev = Module(new SimDev)
 	// dev.io.clock := clock
     // dev.io.reset := reset.asBool() 
-    io.dcache.req.bits.is_cached := DontCare
-    io.dcache.req.bits.data := DontCare
+    io.dcache.req.bits <> DontCare
     io.dcache.req.valid := false.B
     io.dcache.resp.ready := false.B
 	io.exec_wb.valid := false.B

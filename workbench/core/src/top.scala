@@ -47,8 +47,8 @@ class verilator_top extends Module {
     imem.io.clock := clock 
     imem.io.reset := reset.asBool()
     instr_fetch.io.wb_if <> write_back.io.wb_if
-    icache.in <> instr_fetch.io.icache
-    imem.io.in <> icache.out
+    icache.io.in <> instr_fetch.io.icache
+    imem.io.in <> icache.io.out
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
     
@@ -64,8 +64,8 @@ class verilator_top extends Module {
     dmem.io.clock := clock 
     dmem.io.reset := reset.asBool()
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
-    dcache.in <> lsu.io.dcache
-    dmem.io.in <> dcache.out
+    dcache.io.in <> lsu.io.dcache
+    dmem.io.in <> dcache.io.out
     
     mdu.io.isu_mdu <> instr_shoot.io.isu_mdu
 
