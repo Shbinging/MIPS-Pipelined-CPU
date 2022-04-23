@@ -49,9 +49,10 @@ class ISU extends Module {
     def isValid(idx:UInt) = !dirtys(idx)
     def rmDirty() = io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
     def rwConflict(idx:UInt) = rmDirty() && (io.rb_isu.addr === idx)
-    def getData1(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rs_data)
-    def getData2(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rt_data)
-    
+   // def getData1(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rs_data)
+    //def getData2(idx:UInt) = Mux(rwConflict(idx), io.rb_isu.data, io.gpr_data.rt_data)
+    def getData1(idx:UInt) = io.gpr_data.rs_data
+    def getData2(idx:UInt) = io.gpr_data.rt_data
     val canLaunch = WireInit(N)
     val rsData, rtData = WireInit(0.U(32.W))
     when(io.id_isu.fire()){
