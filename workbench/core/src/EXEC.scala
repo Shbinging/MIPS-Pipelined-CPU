@@ -148,6 +148,7 @@ class BRU extends Module{
 class LSU extends Module{
     val io = IO{new Bundle{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
+        val dcache = new MemIO
         val exec_wb = Decoupled(new LSU_WB)
     }}
     io.exec_wb.bits <> DontCare // FIXME
@@ -186,13 +187,13 @@ class LSU extends Module{
 		val en = Bool()
 		val w_data = UInt(conf.data_width.W)
 	})
-	val dev = Module(new SimDev)
-	dev.io.clock := clock
-    dev.io.reset := reset.asBool() 
-    dev.io.in.req.bits.is_cached := DontCare
-    dev.io.in.req.bits.data := DontCare
-    dev.io.in.req.valid := false.B
-    dev.io.in.resp.ready := false.B
+	// val dev = Module(new SimDev)
+	// dev.io.clock := clock
+    // dev.io.reset := reset.asBool() 
+    io.dcache.req.bits.is_cached := DontCare
+    io.dcache.req.bits.data := DontCare
+    io.dcache.req.valid := false.B
+    io.dcache.resp.ready := false.B
 	io.exec_wb.valid := false.B
     //printf("state %d valid %d\n", state_reg, io.exec_wb.valid)
 	switch(state_reg){
@@ -247,16 +248,16 @@ class LSU extends Module{
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
-				dev.io.in.req.valid := true.B
-				dev.io.in.req.bits.addr :=read_reg.addr & (~3.U(32.W))
-				dev.io.in.req.bits.func := MX_RD
-				dev.io.in.req.bits.len := 3.U
-				dev.io.in.resp.ready := true.B
+				io.dcache.req.valid := true.B
+				io.dcache.req.bits.addr :=read_reg.addr & (~3.U(32.W))
+				io.dcache.req.bits.func := MX_RD
+				io.dcache.req.bits.len := 3.U
+				io.dcache.resp.ready := true.B
 			}
-			when(dev.io.in.resp.fire()){
+			when(io.dcache.resp.fire()){
 				state_reg := LSU_CALC
-				exec_reg.preReadData := dev.io.in.resp.bits.data >> (read_reg.addr(1, 0) << 3)
-				dev.io.in.req.valid := false.B
+				exec_reg.preReadData := io.dcache.resp.bits.data >> (read_reg.addr(1, 0) << 3)
+				io.dcache.req.valid := false.B
 			}
 		}
 		is (LSU_CALC){
@@ -288,19 +289,19 @@ class LSU extends Module{
 				back_reg.w_data := write_reg.w_data
 				state_reg := LSU_BACK
 			}.otherwise{
-                dev.io.in.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
-				dev.io.in.req.valid := true.B
-				dev.io.in.req.bits.addr := write_reg.addr & (~3.U(32.W))
-                //printf("%x\n", dev.io.in.req.bits.addr)
-				dev.io.in.req.bits.func := MX_WR
-				dev.io.in.req.bits.strb := write_reg.strb
+                io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
+				io.dcache.req.valid := true.B
+				io.dcache.req.bits.addr := write_reg.addr & (~3.U(32.W))
+                //printf("%x\n", io.dcache.req.bits.addr)
+				io.dcache.req.bits.func := MX_WR
+				io.dcache.req.bits.strb := write_reg.strb
                 //printf("strb %x\n", write_reg.strb)
-				dev.io.in.resp.ready := true.B
+				io.dcache.resp.ready := true.B
 				back_reg.w_data := DontCare
 			}
-			when(dev.io.in.resp.fire()){
+			when(io.dcache.resp.fire()){
 				state_reg := LSU_BACK
-				dev.io.in.req.valid := false.B
+				io.dcache.req.valid := false.B
 			}
 		}
 		is (LSU_BACK){

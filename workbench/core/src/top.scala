@@ -17,18 +17,26 @@ class verilator_top extends Module {
     })
 
     val gprs = Module(new GPR)
+    
     val instr_fetch = Module(new InstrFetch)
+    val icache = Module(new L1Cache)
+    val imem = Module(new SimDev) // FIXME: arbit
+    
     val instr_decode = Module(new InstrDecode)
+    
     val instr_shoot = Module(new ISU )
 
     val alu = Module(new ALU)
     val bru = Module(new BRU)
+    
     val lsu = Module(new LSU)
+    val dcache = Module(new L1Cache)
+    val dmem = Module(new SimDev) // FIXME: arbit
+    
     val mdu = Module(new MDU)
 
     val write_back = Module(new WriteBack)
 
-    
 
     val commit = RegNext(write_back.io.commit)
     instr_fetch.io.flush := write_back.io.flush
@@ -36,7 +44,11 @@ class verilator_top extends Module {
     instr_shoot.io.flush := write_back.io.flush 
 
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
+    imem.io.clock := clock 
+    imem.io.reset := reset.asBool()
     instr_fetch.io.wb_if <> write_back.io.wb_if
+    icache.in <> instr_fetch.io.icache
+    imem.io.in <> icache.out
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
     
@@ -46,8 +58,15 @@ class verilator_top extends Module {
     instr_shoot.io.gpr_data <> gprs.io.read_out
     
     alu.io.isu_alu <> instr_shoot.io.isu_alu
+    
     bru.io.isu_bru <> instr_shoot.io.isu_bru
+    
+    dmem.io.clock := clock 
+    dmem.io.reset := reset.asBool()
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
+    dcache.in <> lsu.io.dcache
+    dmem.io.in <> dcache.out
+    
     mdu.io.isu_mdu <> instr_shoot.io.isu_mdu
 
     write_back.io.alu_wb <> alu.io.exec_wb
