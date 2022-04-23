@@ -16,7 +16,6 @@ class ALU extends Module{
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
-    
     val A_in = WireInit(r.operand_1)
     val B_in = WireInit(r.operand_2)
     val ALU_op = WireInit(r.alu_op)
