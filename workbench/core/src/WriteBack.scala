@@ -60,7 +60,7 @@ class WriteBack extends Module{
         io.commit.commit_instr := reg_alu_wb.current_instr
         io.commit.commit := true.B
         printf("alu wb %x\n", io.commit.commit_pc);
-        //printf(p"${time}: alu wb\n")
+        printf(p"${time}: alu wb\n")
     }.elsewhen(bru_wb_fire){
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr

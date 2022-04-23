@@ -46,7 +46,7 @@ class ISU extends Module {
             dirtys(i) := N
         }
     }
-    def isValid(idx:UInt) = !dirtys(idx)
+    def isValid(idx:UInt) = !dirtys(idx) || rwConflict(idx)
     def isReadValid(idx:UInt) = !dirtys(idx) || rwConflict(idx) || aluPass(idx)
     def rmDirty() = io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
     def aluPassing() = io.alu_pass.w_en =/= 0.U && io.alu_pass.w_addr =/= 0.U
@@ -60,6 +60,10 @@ class ISU extends Module {
     val rsData, rtData = WireInit(0.U(32.W))
     when(io.id_isu.fire()){
         printf("ok\n");
+    }    
+    when(rmDirty()){
+        printf("rm dirty %d\n", io.rb_isu.addr)
+        dirtys(io.rb_isu.addr) := 0.U
     }
     when(!io.flush && reg_id_isu_prepared && empty && isReadValid(reg_id_isu.read1) && isReadValid((reg_id_isu.read2)) && isValid(reg_id_isu.write)){
         when(reg_id_isu.write =/= 0.U){
@@ -74,10 +78,6 @@ class ISU extends Module {
         printf("read1 %d\n", reg_id_isu.read1)
         canLaunch := N
     }    
-    when(rmDirty()){
-        printf("rm dirty %d\n", io.rb_isu.addr)
-        dirtys(io.rb_isu.addr) := 0.U
-    }
     switch(reg_id_isu.exu){
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
