@@ -44,6 +44,10 @@ class IF_ID extends Bundle{
 class ID_ISU extends Bundle{
     // val id_commit = Output(Bool())
     val exu = Output(UInt(EX_ID_WIDTH.W))
+    //FIXME rs_addr rt_addr 表示该指令要取的寄存器地址，如果rs_addr rt_addr不需要寄存器就设为0
+    val read1 = Output(UInt(REG_SZ.W))
+    val read2 = Output(UInt(REG_SZ.W))
+    val write = Output(UInt(REG_SZ.W))
     
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
