@@ -20,7 +20,7 @@ class verilator_top extends Module {
     
     val instr_fetch = Module(new InstrFetch)
     val icache = Module(new L1Cache)
-    val imem = Module(new SimDev) // FIXME: arbit
+    // val imem = Module(new SimDev) // FIXME: arbit
     
     val instr_decode = Module(new InstrDecode)
     
@@ -31,12 +31,24 @@ class verilator_top extends Module {
     
     val lsu = Module(new LSU)
     val dcache = Module(new L1Cache)
-    val dmem = Module(new SimDev) // FIXME: arbit
+    // val dmem = Module(new SimDev) // FIXME: arbit
     
     val mdu = Module(new MDU)
 
     val write_back = Module(new WriteBack)
-
+    
+    val mem_arbiter = Module(new Arbiter(new MemReq, 2))
+    val mem = Module(new SimDev)
+    val arbit_chosen = RegEnable(enable=mem.io.in.req.fire(), next=mem_arbiter.io.chosen)
+    mem.io.clock := clock 
+    mem.io.reset := reset.asBool()
+    mem_arbiter.io.in <> VecInit(icache.io.out.req, dcache.io.out.req)
+    mem.io.in.req <> mem_arbiter.io.out
+    dcache.io.out.resp.valid := mem.io.in.resp.valid && (arbit_chosen===1.U)
+    icache.io.out.resp.valid := mem.io.in.resp.valid && (arbit_chosen===0.U) 
+    mem.io.in.resp.ready := dcache.io.out.resp.ready | icache.io.out.resp.ready
+    dcache.io.out.resp.bits <> mem.io.in.resp.bits 
+    icache.io.out.resp.bits <> mem.io.in.resp.bits
 
     val commit = RegNext(write_back.io.commit)
     instr_fetch.io.flush := write_back.io.flush
@@ -47,11 +59,11 @@ class verilator_top extends Module {
     lsu.io.flush := write_back.io.flush
     alu.io.flush := write_back.io.flush
     // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
-    imem.io.clock := clock 
-    imem.io.reset := reset.asBool()
+    // imem.io.clock := clock 
+    // imem.io.reset := reset.asBool()
     instr_fetch.io.wb_if <> write_back.io.wb_if
     icache.io.in <> instr_fetch.io.icache
-    imem.io.in <> icache.io.out
+    // imem.io.in <> icache.io.out
     when(icache.io.out.req.fire()){
       printf(p"icache: ${icache.io.out.req.bits}\n")
     }
@@ -69,11 +81,11 @@ class verilator_top extends Module {
     
     bru.io.isu_bru <> instr_shoot.io.isu_bru
     
-    dmem.io.clock := clock 
-    dmem.io.reset := reset.asBool()
+    // dmem.io.clock := clock 
+    // dmem.io.reset := reset.asBool()
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
     dcache.io.in <> lsu.io.dcache
-    dmem.io.in <> dcache.io.out
+    // dmem.io.in <> dcache.io.out
     when(dcache.io.out.req.fire()){
       printf(p"dcache: ${dcache.io.out.req.bits}\n")
     }
