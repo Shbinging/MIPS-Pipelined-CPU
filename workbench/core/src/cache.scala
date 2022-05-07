@@ -18,7 +18,8 @@ class L1Cache extends Module{
         val out = new MemIO
     })
     val req_data = RegEnable(io.in.req.bits, io.in.req.fire())
-    val state = RegInit(0.U(2.W))
+    val resp_data = RegEnable(next=io.out.resp.bits.data, enable=io.out.resp.fire())
+    val state = RegInit(0.U(3.W))
 
     io.in.req.ready := io.in.resp.fire() | (state===0.U)
 
@@ -55,9 +56,14 @@ class L1Cache extends Module{
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
         val tag_fire = io.in.req.bits.addr(conf.addr_width-1, conf.cache_line_width)
-        when(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
+        when(io.in.req.bits.addr >= "h_a000_0000".U){   // uncached, should be a000_0000
+            printf(p"goto 4\n")
+            state := 4.U
+        } .elsewhen(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
+            printf(p"goto 1\n")
             state := 1.U    // cache hit
         } .otherwise{    // cache miss
+            printf(p"goto 2/3\n")
             line_count := 0.U(conf.cache_line_width.W)
             when(cache(index_fire).valid && cache(index_fire).dirty){ // write back 
                 state := 2.U
@@ -140,5 +146,27 @@ class L1Cache extends Module{
                 line_count := 0.U
             }
         }
+    } .elsewhen(state===4.U){   // uncached
+        // printf("stall in 4\n")
+        io.out.req.bits.func := req_data.func
+        io.out.req.bits.addr := req_data.addr
+        io.out.req.bits.len := req_data.len
+        io.out.req.bits.strb := req_data.strb
+        io.out.req.valid := true.B
+        io.out.resp.ready := true.B
+        when(io.out.resp.fire()){
+            state := 5.U
+        }
+    } .elsewhen(state===5.U){
+        // printf("stall in 5\n")
+        io.in.resp.valid := true.B
+        io.in.resp.bits.data := resp_data
+        when(io.in.resp.fire() && !io.in.req.fire()){
+            state := 0.U
+        }
+    }
+    
+    when(io.in.resp.fire()){
+        printf(p"response: ${io.in.resp.bits.data} for addr ${req_data.addr}\n")
     }
 }
