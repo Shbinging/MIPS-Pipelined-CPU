@@ -37,7 +37,6 @@ class WriteBack extends Module{
         time := time + 1.U
         printf(p"commit sum:${time}\n")
     }
-    // printf(p"wb working\n\n")
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
      io.wb_if.bits.pc_w_data <> DontCare
@@ -60,12 +59,12 @@ class WriteBack extends Module{
     when(alu_wb_fire){
         io.gpr_wr.addr := reg_alu_wb.w_addr
         io.gpr_wr.data := reg_alu_wb.ALU_out
-        io.gpr_wr.w_en := "b1111".U
+        io.gpr_wr.w_en := Mux(reg_alu_wb.w_en, "b1111".U, "b0000".U)
         io.commit.commit_pc := reg_alu_wb.current_pc
         io.commit.commit_instr := reg_alu_wb.current_instr
         io.commit.commit := true.B
         printf("alu wb %x\n", io.commit.commit_pc);
-        printf(p"${time}: alu wb\n")
+        // printf(p"${time}: alu wb\n")
     }.elsewhen(bru_wb_fire){
         io.commit.commit_pc := reg_bru_wb.current_pc
         io.commit.commit_instr := reg_bru_wb.current_instr
@@ -88,7 +87,7 @@ class WriteBack extends Module{
         io.gpr_wr.data := reg_mdu_wb.w_data
         io.gpr_wr.w_en := Mux(reg_mdu_wb.w_en, "b1111".U, 0.U)
         //printf(p"w_en: ${io.gpr_wr.w_en} w_data: ${io.gpr_wr.data}\n")
-        printf("commit %x\n", reg_mdu_wb.current_pc)
+        // printf("commit %x\n", reg_mdu_wb.current_pc)
         io.commit.commit_pc := reg_mdu_wb.current_pc
         io.commit.commit_instr := reg_mdu_wb.current_instr
         io.commit.commit := true.B

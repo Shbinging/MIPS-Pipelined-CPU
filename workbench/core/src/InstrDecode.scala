@@ -63,8 +63,8 @@ class InstrDecode extends Module{
             EXT  -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_EXT_OP, rt, rs, rt),
             CLO  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_CLO_OP, rd, rs, rt),
             CLZ  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_CLZ_OP, rd, rs, rt),
-            // TODO: MOVN 
-            // TODO: MOVZ 
+            MOVN -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_MOVN_OP, rd, rs, rt),
+            MOVZ -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_MOVZ_OP, rd, rs, rt),
 
             BEQ    -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BEQ_OP, 0.U, rs, rt),
             BNE    -> List(DontCare, RS_SEL, RT_SEL, SIGN_EXT_SEL, BRU_ID, BRU_BNE_OP, 0.U, rs, rt),
@@ -79,13 +79,13 @@ class InstrDecode extends Module{
             JR     -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JR_OP, 0.U, rs, 0.U),
             JALR   -> List(rd, RS_SEL, DontCare, DontCare, BRU_ID, BRU_JALR_OP, rd, rs, 0.U),
             
-            LW  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LW_OP, rt, rs, 0.U),
-            LH  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LH_OP, rt, rs, 0.U),
-            LHU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LHU_OP, rt, rs, 0.U),
-            LB  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LB_OP, rt, rs, 0.U),
-            LBU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LBU_OP, rt, rs, 0.U), 
-            LWL -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWL_OP, rt, rs, 0.U),
-            LWR -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWR_OP, rt, rs, 0.U),
+            LW  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LW_OP, rt, rs, rt),
+            LH  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LH_OP, rt, rs, rt),
+            LHU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LHU_OP, rt, rs, rt),
+            LB  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LB_OP, rt, rs, rt),
+            LBU -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LBU_OP, rt, rs, rt), 
+            LWL -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWL_OP, rt, rs, rt),
+            LWR -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_LWR_OP, rt, rs, rt),
             SW  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SW_OP, 0.U, rs, rt),
             SH  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SH_OP, 0.U, rs, rt),
             SB  -> List(rt, RS_SEL, IMM_SEL, SIGN_EXT_SEL, LSU_ID, LSU_SB_OP, 0.U, rs, rt),
@@ -105,6 +105,7 @@ class InstrDecode extends Module{
             MADDU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MADDU_OP, 0.U, rs, rt),
             MSUB -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUB_OP, 0.U, rs, rt),
             MSUBU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUBU_OP, 0.U, rs, rt)
+
         )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

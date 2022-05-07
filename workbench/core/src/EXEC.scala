@@ -66,7 +66,9 @@ class ALU extends Module{
         (r.alu_op === ALU_INS_OP) -> (((A_in&a_mask)<<lsb).asUInt()(31, 0) + (B_in&b_mask)),
         (r.alu_op === ALU_EXT_OP) -> ((A_in>>lsb) & ("h_ffff_ffff".U(32.W)>>(31.U - msb))),
         (r.alu_op === ALU_CLO_OP) -> count(0),
-        (r.alu_op === ALU_CLZ_OP) -> count(0)
+        (r.alu_op === ALU_CLZ_OP) -> count(0),
+        (r.alu_op === ALU_MOVZ_OP)-> (A_in),
+        (r.alu_op === ALU_MOVN_OP)-> (A_in)
     ))(31, 0)
     //io.out.ALU_out := ALU_out
     //io.out.Overflow_out := false.B //XXX:modify when need exception
@@ -74,18 +76,39 @@ class ALU extends Module{
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
     io.exec_wb.bits.w_addr := r.rd_addr // io.isu_alu.bits.rd_addr
-    io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
+    when(r.alu_op === ALU_MOVZ_OP){
+        io.exec_wb.bits.w_en := isu_alu_prepared && (B_in===0.U)
+        // printf(p"ALU_MOVZ: @ ${r.current_pc} ${A_in}, ${B_in}, ${io.exec_wb.bits.w_en}\n")
+        // printf(p"ALU EXEC valid?: ${io.exec_wb.valid} ${isu_alu_prepared} && ${!io.flush}\n")
+    } .elsewhen(r.alu_op === ALU_MOVN_OP){
+        io.exec_wb.bits.w_en := isu_alu_prepared && (B_in=/=0.U)
+    }.otherwise{
+        io.exec_wb.bits.w_en := isu_alu_prepared    // XXX:
+    }
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.valid := isu_alu_prepared && !io.flush // 1 cycle 
     io.exec_pass.ALU_out := ALU_out
     io.exec_pass.w_addr := r.rd_addr
-    io.exec_pass.w_en := isu_alu_prepared
-    //printf(p"alu: ${r} \n- ${A_in} ${B_in}\n")
+
+    when(r.alu_op === ALU_MOVZ_OP){
+        io.exec_pass.w_en := isu_alu_prepared && (B_in===0.U)
+        io.exec_pass.rm_dirty := (B_in=/=0.U)
+    } .elsewhen(r.alu_op === ALU_MOVN_OP){
+        io.exec_pass.w_en := isu_alu_prepared && (B_in=/=0.U)
+        io.exec_pass.rm_dirty := (B_in===0.U)
+    } .otherwise{
+        io.exec_pass.w_en := isu_alu_prepared    
+        io.exec_pass.rm_dirty := false.B
+    }
+    
     when (io.flush || (!io.isu_alu.fire() && io.exec_wb.fire())) {
         isu_alu_prepared := N
     } .elsewhen (!io.flush && io.isu_alu.fire()) {
         isu_alu_prepared := Y
+    }
+    when(isu_alu_prepared){
+        printf("ALU WORKING\n");
     }
 }
 
@@ -98,7 +121,9 @@ class BRU extends Module{
     val isu_bur_fire = RegNext(false.B)
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
     io.isu_bru.ready := io.exec_wb.fire() || !isu_bur_fire
-
+    when(isu_bur_fire){
+        printf("BRU WORKING\n");
+    }
     val bruwb = Wire(new BRU_WB)
     bruwb := DontCare
     bruwb.w_en := false.B
@@ -133,9 +158,9 @@ class BRU extends Module{
         // }
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
-        when(r.bru_op === BRU_JAL_OP){
-            printf("jal ok %d\n", bruwb.w_data);
-        }
+        // when(r.bru_op === BRU_JAL_OP){
+        //     printf("jal ok %d\n", bruwb.w_data);
+        // }
         bruwb.w_en := true.B
         bruwb.w_addr := Mux(r.bru_op===BRU_JALR_OP, r.rd, 31.U)
         bruwb.w_data := r.pcNext + 4.U
@@ -168,13 +193,16 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
+    when(state_reg=/=LSU_DIE){
+        printf("LSU WORKING\n")
+    }
+    // printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
     when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
     } .elsewhen (!io.flush && io.isu_lsu.fire()) {
         isu_lsu_fire := Y
         state_reg := LSU_DECODE
-        printf("state_reg %d\n", LSU_DECODE)
+        // printf("state_reg %d\n", LSU_DECODE)
     }
 
 	val back_reg = Reg(new Bundle{
@@ -208,11 +236,11 @@ class LSU extends Module{
 
 	switch(state_reg){
 		is(LSU_DIE){
-            printf("state:LSU DIE\n")
+            // printf("state:LSU DIE\n")
 			io.exec_wb.valid:=false.B
 		}
 		is(LSU_DECODE){
-            printf("state:LSU_DECODE\n");
+            // printf("state:LSU_DECODE\n");
 			val vAddr = Wire(UInt(32.W))
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
             val offset = Wire(UInt(2.W))
@@ -260,8 +288,8 @@ class LSU extends Module{
             }
 		}
 		is(LSU_READ){
-            printf("state:LSU_READ\n");
-            printf(p"lsu_load ${read_reg.addr & (~3.U(32.W))}\n")
+            // printf("state:LSU_READ\n");
+            // printf(p"lsu_load ${read_reg.addr & (~3.U(32.W))}\n")
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
@@ -281,7 +309,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_CALC){
-            printf("state:LSU_CALC\n");
+            // printf("state:LSU_CALC\n");
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
@@ -300,6 +328,7 @@ class LSU extends Module{
 					(exec_reg.func === LSU_FUNC_WWR) ->((r.rtData << (index << 3)) | (exec_reg.preReadData & shiftMask1(~index))).asTypeOf(UInt(32.W))
 				)
 				).asTypeOf(UInt(32.W))
+                printf("EXEC PREREAD: %x %x %x %x\n", exec_reg.preReadData, (~index)<<3, r.rtData, shiftMask1(index))
 			}.otherwise{
 				write_reg.w_data := r.rtData
 			}
@@ -309,7 +338,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_WRITE){
-            printf("LSU WRITE\n")
+            // printf("LSU WRITE\n")
             when(io.flush){
                 state_reg := LSU_DIE
             }.otherwise{
@@ -334,7 +363,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_BACK){
-            printf("state:LSU_BACK\n");
+            // printf("state:LSU_BACK\n");
             //printf("lsu ok\n");
             when(!io.flush){
 			    io.exec_wb.valid := isu_lsu_fire && !io.flush
@@ -400,7 +429,9 @@ class MDU extends Module{
         //printf("mdu is working!\n");
         state := 1.U
     }
-
+    when(state=/=0.U){
+        printf("MDU WORKING\n")
+    }
     // when(io.isu_mdu.fire()){
     //     printf(p"#### ${io.exec_wb.fire()} or ${!isu_mdu_fired}\n")
     //     printf(p"${io.isu_mdu}\n")

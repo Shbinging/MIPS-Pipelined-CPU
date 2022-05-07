@@ -67,7 +67,7 @@ class InstrFetch extends Module{
     io.if_id.valid := if_id_instr_prepared && !io.flush
     io.if_id.bits.instr := if_id_instr
     io.if_id.bits.pcNext :=if_id_next_pc
-    // when(io.if_id.fire()){
-    //     printf("start executing: %x\n", request_pc - 4.U)
-    // }
+    when(io.if_id.fire()){
+        printf("start executing: %x\n", request_pc - 4.U)
+    }
 }

@@ -49,6 +49,7 @@ class ISU extends Module {
     def isValid(idx:UInt) = !dirtys(idx) || rwConflict(idx)
     def isReadValid(idx:UInt) = !dirtys(idx) || rwConflict(idx) || aluPass(idx)
     def rmDirty() = io.rb_isu.w_en =/= 0.U && io.rb_isu.addr =/= 0.U
+    def rmDirtyByALU() = io.alu_pass.rm_dirty
     def aluPassing() = io.alu_pass.w_en =/= 0.U && io.alu_pass.w_addr =/= 0.U
     def rwConflict(idx:UInt) = rmDirty() && (io.rb_isu.addr === idx)
     def aluPass(idx:UInt) = aluPassing() && (io.alu_pass.w_addr === idx)
@@ -65,6 +66,9 @@ class ISU extends Module {
         printf("rm dirty %d\n", io.rb_isu.addr)
         dirtys(io.rb_isu.addr) := 0.U
     }
+    when(rmDirtyByALU()){
+        dirtys(io.alu_pass.w_addr) := 0.U
+    }
     when(!io.flush && reg_id_isu_prepared && empty && isReadValid(reg_id_isu.read1) && isReadValid((reg_id_isu.read2)) && isValid(reg_id_isu.write)){
         when(reg_id_isu.write =/= 0.U){
             dirtys(reg_id_isu.write) := Y
@@ -73,6 +77,7 @@ class ISU extends Module {
         canLaunch := Y
         rsData := getData1(reg_id_isu.read1)
         rtData := getData2(reg_id_isu.read2)
+        printf(p"rt Data: ${rtData} @ ${io.out_gpr_read.rt_addr}\n")
     }.otherwise{
         printf("%d %d %d %d %d\n",reg_id_isu_prepared, empty, isValid(reg_id_isu.read1) , isValid((reg_id_isu.read2)) ,isValid(reg_id_isu.write) )
         printf("read1 %d\n", reg_id_isu.read1)

@@ -127,6 +127,7 @@ class ALU_WB extends Bundle{
 }
 
 class ALU_PASS extends Bundle{
+    val rm_dirty = Output(Bool())
     val w_en = Output(Bool())
     val w_addr = Output(UInt(REG_SZ.W))
     val ALU_out = Output(UInt(32.W))

@@ -56,19 +56,26 @@ class L1Cache extends Module{
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
         val tag_fire = io.in.req.bits.addr(conf.addr_width-1, conf.cache_line_width)
-        when(io.in.req.bits.addr >= "h_a000_0000".U){   // uncached, should be a000_0000
+        when(io.in.req.bits.addr >= "h_a000_0000".U && io.in.req.bits.addr < "h_c000_0000".U){   // uncached, should be a000_0000
             printf(p"goto 4\n")
+            req_data.addr := io.in.req.bits.addr - "h_a000_0000".U
             state := 4.U
-        } .elsewhen(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
-            printf(p"goto 1\n")
-            state := 1.U    // cache hit
-        } .otherwise{    // cache miss
-            printf(p"goto 2/3\n")
-            line_count := 0.U(conf.cache_line_width.W)
-            when(cache(index_fire).valid && cache(index_fire).dirty){ // write back 
-                state := 2.U
-            } .otherwise{   // read 
-                state := 3.U
+        } .otherwise{
+            when(io.in.req.bits.addr >= "h_8000_0000".U && io.in.req.bits.addr < "h_a000_0000".U){
+                req_data.addr := io.in.req.bits.addr - "h_8000_0000".U
+            }
+            
+            when(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
+                printf(p"goto 1\n")
+                state := 1.U    // cache hit
+            } .otherwise{    // cache miss
+                printf(p"goto 2/3\n")
+                line_count := 0.U(conf.cache_line_width.W)
+                when(cache(index_fire).valid && cache(index_fire).dirty){ // write back 
+                    state := 2.U
+                } .otherwise{   // read 
+                    state := 3.U
+                }
             }
         }
     }
