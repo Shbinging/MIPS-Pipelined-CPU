@@ -183,6 +183,10 @@ class MultiplierIO extends Bundle {
   val data_dout = Input(UInt(66.W))
 }
 
+class WrTLB extends Bundle{
+  
+}
+
 // read, write memory
 class MemReq extends Bundle {
   val is_cached = Output(Bool())

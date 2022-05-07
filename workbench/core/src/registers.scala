@@ -54,3 +54,19 @@ class GPR extends Module {
         io.gpr_commit(i) := gprs(i).asUInt()
     }
 }
+
+// CP 0 
+class EntryHi extends Bundle{
+    val vpn2 = UInt(19.W)
+    val zero_padding = UInt(5.W)
+    val asid = UInt(8.W)
+}
+
+class EntryLo extends Bundle{
+    val zero_padding = UInt(2.W)
+    val pfn = UInt(24.W)
+    val coherence = UInt(3.W)
+    val dirty = Bool()
+    val valid = Bool()
+    val global = Bool()
+}
