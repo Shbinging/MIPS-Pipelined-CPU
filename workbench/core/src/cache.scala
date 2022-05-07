@@ -106,6 +106,10 @@ class L1Cache extends Module{
         io.out.req.bits.addr := (cache(index).tag.asUInt()<<conf.cache_line_width) + line_count
         io.out.req.bits.len := 3.U 
         io.out.req.bits.strb := "b1111".U
+        io.out.req.bits.data := Cat(
+            Cat(cache(index).data(line_count+3.U), cache(index).data(line_count+2.U)), 
+            Cat(cache(index).data(line_count+1.U), cache(index).data(line_count+0.U))
+        )
         io.out.req.valid := true.B
         io.out.resp.ready := true.B
         // TODO: cistern 
@@ -152,6 +156,7 @@ class L1Cache extends Module{
         io.out.req.bits.addr := req_data.addr
         io.out.req.bits.len := req_data.len
         io.out.req.bits.strb := req_data.strb
+        io.out.req.bits.data := req_data.data
         io.out.req.valid := true.B
         io.out.resp.ready := true.B
         when(io.out.resp.fire()){

@@ -26,10 +26,10 @@ class TLB extends Module{
 class TLBTranslator extends Module{
     val io = IO(new Bundle{
         val tlb = Input(Vec(conf.tlb_size, new TLBEntry))
-        val asid = Input(UInt(8.U))
-        val va = Input(conf.addr_width.W)
+        val asid = Input(UInt(8.W))
+        val va = Input(UInt(conf.addr_width.W))
         val ref_type = Input(UInt(MX_SZ.W))
-        val pa = Output(conf.addr_width.W)
+        val pa = Output(UInt(conf.addr_width.W))
         val tlb_invalid_exception = Output(Bool())
         val tlb_modified_execption = Output(Bool())
         val tlb_miss_exception = Output(Bool())
@@ -44,15 +44,15 @@ class TLBTranslator extends Module{
 
     for(i <- 0 to conf.tlb_size-1){
         when(
-            (tlb(i).hi.vpn2 === (io.va>>12)) && (
-                (tlb(i).lo_0.global & tlb(i).lo_1.global) ||
-                (tlb(i).hi.asid === io.asid)
+            (io.tlb(i).hi.vpn2 === (io.va>>12)) && (
+                (io.tlb(i).lo_0.global & io.tlb(i).lo_1.global) ||
+                (io.tlb(i).hi.asid === io.asid)
             )
         ){
-            entry := Mux(va(13)===0.U, tlb(i).lo_0, tlb(i).lo_1)
+            entry := Mux(io.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
             when(entry.valid === false.B){
                 io.tlb_invalid_exception := true.B
-            } .elsewhen(entry.dirty===false.B && ref_type===MX_WR){
+            } .elsewhen(entry.dirty===false.B && io.ref_type===MX_WR){
                 io.tlb_modified_execption := true.B
             }
             io.pa := Cat(entry.pfn(31, 12), io.va(11, 0))
