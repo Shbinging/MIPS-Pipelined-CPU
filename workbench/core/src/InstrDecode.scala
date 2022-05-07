@@ -117,7 +117,9 @@ class InstrDecode extends Module{
     io.id_isu.bits.write := decoded_instr(6)
     io.id_isu.bits.read1 := decoded_instr(7)
     io.id_isu.bits.read2 := decoded_instr(8)
-    
+    when(io.id_isu.fire()){
+        printf(p"id isu bits ${io.id_isu.bits}\n")
+    }
     io.id_isu.valid := if_id_reg_prepared && !io.flush
     when(io.flush || (!io.if_id.fire() && io.id_isu.fire())){
         if_id_reg_prepared := false.B

@@ -45,7 +45,7 @@ bool DiffTop::check_states() {
 	// 	"cycle %lu: M[%08x]: nemu:%08x <> dut:%08x\n",
 	// 	noop_cycles, ls_addr, nemu_ls_data, ls_data);
 	// }
-
+	// printf("80010000: %x 80010004: %x \n", napi_mmio_peek(0x0010000, 4), napi_mmio_peek(0x0010004, 4));
 #define GPR_TEST(i)                                     \
 	check_eq(napi_get_gpr(i), dut_ptr->io_commit_gpr_##i, \
 		"cycle %lu, pc %08x, instr %08x: gpr[%d]: "       \

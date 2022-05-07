@@ -53,6 +53,7 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := gprs(i).asUInt()
     }
+    printf("GPR[8] t0 = %x\n", gprs(8).asUInt())
 }
 
 // CP 0 

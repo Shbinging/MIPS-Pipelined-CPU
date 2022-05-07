@@ -77,6 +77,7 @@ class ISU extends Module {
         canLaunch := Y
         rsData := getData1(reg_id_isu.read1)
         rtData := getData2(reg_id_isu.read2)
+        printf("alu pass %x %x %x\n", io.alu_pass.ALU_out, io.rb_isu.data, io.gpr_data.rt_data)
         printf(p"rt Data: ${rtData} @ ${io.out_gpr_read.rt_addr}\n")
     }.otherwise{
         printf("%d %d %d %d %d\n",reg_id_isu_prepared, empty, isValid(reg_id_isu.read1) , isValid((reg_id_isu.read2)) ,isValid(reg_id_isu.write) )
