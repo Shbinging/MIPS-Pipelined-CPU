@@ -28,6 +28,7 @@ class GPR extends Module {
         val gpr_commit = Output(Vec(32, UInt(32.W)))
         val cp0_write_in = new CP0WriteInput
         val cp0_status = Output(new cp0_Status_12)
+        val cp0_cause = Output(new cp0_Cause_13)
     })
     // TODO: support variable lengths configs
 
@@ -83,6 +84,7 @@ class GPR extends Module {
         }        
     }
     io.cp0_status := regs(32.U + 12.U).asTypeOf(new cp0_Status_12)
+    io.cp0_cause := regs(cp0_cause).asTypeOf(new cp0_Cause_13)
     //printf("GPR[8] t0 = %x\n", regs(8).asUInt())
 }
 

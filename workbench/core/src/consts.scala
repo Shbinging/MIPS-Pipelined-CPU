@@ -118,11 +118,12 @@ trait DecodeSelectors {
 }
 
 trait ExecUnitIndices {
-  val EX_ID_WIDTH = 2
+  val EX_ID_WIDTH = 3
   val ALU_ID      = 0.U(EX_ID_WIDTH.W)
   val BRU_ID      = 1.U(EX_ID_WIDTH.W)
   val LSU_ID      = 2.U(EX_ID_WIDTH.W)
   val MDU_ID      = 3.U(EX_ID_WIDTH.W)
+  val PRU_ID      = 4.U(EX_ID_WIDTH.W)
 
   val OPCODE_WIDTH = 5
   val ALU_ADDU_OP = "b00000".U(OPCODE_WIDTH.W)
@@ -212,9 +213,9 @@ trait ExecUnitIndices {
   val MDU_MUL_OP = "b1100".U(OPCODE_WIDTH.W)
 
   //PRU
-  val PRU_MFC0_OP = 0.U(4.W)
-  val PRU_MTC0_OP = 1.U(4.W)
-  val PRU_ERET_OP = 2.U(4.W)
+  val PRU_SYSCALL_OP = 0.U(4.W)
+  val PRU_BREAK_OP = 1.U(4.W)
+  
 }
 
 trait InstrPattern {
@@ -298,6 +299,10 @@ trait InstrPattern {
   val MFC0 = BitPat("b01000000000??????????00000000???")
   val MTC0 = BitPat("b01000000100??????????00000000???")
   val ERET = BitPat("b01000010000000000000000000011000")
+
+  val BREAK = BitPat("b000000????????????????????001101")
+  val SYSCALL = BitPat("b000000????????????????????001100")
+  
 }
 
 object consts extends InstrPattern

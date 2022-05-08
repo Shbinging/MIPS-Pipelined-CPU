@@ -107,7 +107,8 @@ class InstrDecode extends Module{
             MSUBU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUBU_OP, 0.U, rs, rt),
             MFC0 -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, rt, 32.U + rd, 0.U),
             MTC0 -> List(32.U + rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, 32.U + rd, rt, 0.U),
-            ERET -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_ERET_OP, 0.U, 32.U + 14.U, 0.U)
+            ERET -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_ERET_OP, 0.U, 32.U + 14.U, 0.U),
+            SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U) //syscall 翻译成addi $0, $0, 0
         )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

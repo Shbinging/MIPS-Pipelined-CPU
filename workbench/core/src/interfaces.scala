@@ -132,7 +132,18 @@ class ISU_MDU extends Bundle{
   val current_instr = Output(UInt(conf.data_width.W))
 }
 
+class ISU_PRU extends Bundle{
+    val pru_op = Output(UInt(4.W))
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
+}
 
+class PRU_WB extends Bundle{
+    val error = Output(new exceptionInfo)
+    val current_pc = Output(UInt(conf.addr_width.W))
+    val current_instr = Output(UInt(conf.data_width.W))
+    val needCommit = Output(Bool())
+}
 // EXEC
 class ALU_WB extends Bundle{
     val w_en = Output(Bool())

@@ -5,7 +5,36 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 
-
+class PRU extends Module{
+    val io = IO(new Bundle{
+        val isu_pru = Flipped(Decoupled(new ISU_PRU))
+        val flush = Input(Bool())
+        val exec_wb = Decoupled(new PRU_WB)  
+    })
+    val isu_pru_prepared = RegInit(N)
+    io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
+    
+    val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
+    io.exec_wb.bits := DontCare
+    io.exec_wb.bits.current_pc := io.isu_pru.bits.current_pc
+    io.exec_wb.bits.current_instr := io.isu_pru.bits.current_instr
+    io.exec_wb.bits.error.enable := Y
+    io.exec_wb.bits.needCommit := N
+    switch(r.pru_op){
+        is(PRU_SYSCALL_OP){
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.error.excType := ET_Sys
+            io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.needCommit := Y
+        }
+    }
+    when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
+        isu_pru_prepared := N
+    } .elsewhen (!io.flush && io.isu_pru.fire()) {
+        isu_pru_prepared := Y
+    }
+    io.exec_wb.valid := isu_pru_prepared && !io.flush
+}
 
 class ALU extends Module{
     val io = IO{new Bundle{
@@ -77,20 +106,31 @@ class ALU extends Module{
     //io.exec_wb.bits.
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
-    when(r.alu_op === ALU_ADD_OP){
-        //TODO:: suboverflow
+    //OVERFLOW
+    when(r.alu_op === ALU_ADD_OP){ 
         when(A_in(31) === B_in(31) && B_in(31) =/= ALU_out(31)){
             when(io.exec_wb.fire()){
                 printf("@%x %x+%x=%x add overflow!\n", r.current_pc, A_in, B_in, ALU_out)
             }
-            //io.exec_wb.bits.Overflow_out := true.B
             io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.error.excType := ET_Ov
             io.exec_wb.bits.error.exeCode := EC_Ov
-            //io.exec_wb.bits.error.exeCode := 
         }
     }
+    when(r.alu_op === ALU_SUB_OP){
+        when(A_in(31) === (-(B_in.asSInt())).asUInt()(31) && A_in(31) =/= ALU_out(31)){
+            when(io.exec_wb.fire()){
+                printf("@%x %x+%x=%x sub overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+            }
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.error.excType := ET_Ov
+            io.exec_wb.bits.error.exeCode := EC_Ov
+        }
+    }
+
+
     io.exec_wb.bits.w_addr := r.rd_addr // io.isu_alu.bits.rd_addr
     when(r.alu_op === ALU_MOVZ_OP){
         io.exec_wb.bits.w_en := isu_alu_prepared && (B_in===0.U)

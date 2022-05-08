@@ -18,6 +18,7 @@ class ISU extends Module {
         val isu_bru = Decoupled(new ISU_BRU)
         val isu_lsu = Decoupled(new ISU_LSU)
         val isu_mdu = Decoupled(new ISU_MDU)
+        val isu_pru = Decoupled(new ISU_PRU)
     })
     
     val reg_id_isu = RegEnable(next=io.id_isu.bits, enable=io.id_isu.fire())
@@ -26,8 +27,8 @@ class ISU extends Module {
     
     // XXX: OoO not allowed 
     val empty = Wire(Bool())
-    empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready)
-    io.id_isu.ready := !reg_id_isu_prepared || io.isu_alu.fire() || io.isu_bru.fire() || io.isu_lsu.fire() || io.isu_mdu.fire()
+    empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready && io.isu_pru.ready)
+    io.id_isu.ready := !reg_id_isu_prepared || io.isu_alu.fire() || io.isu_bru.fire() || io.isu_lsu.fire() || io.isu_mdu.fire() || io.isu_pru.fire()
     //printf("id_isu.ready %d\n", io.id_isu.ready)
     io.isu_alu <> DontCare
     io.isu_alu.valid := false.B
@@ -37,6 +38,8 @@ class ISU extends Module {
     io.isu_lsu.valid := false.B
     io.isu_mdu <> DontCare
     io.isu_mdu.valid := false.B
+    io.isu_pru <> DontCare
+    io.isu_pru.valid := false.B
 // * scoreboard
     io.out_gpr_read.rs_addr := reg_id_isu.read1
     io.out_gpr_read.rt_addr := reg_id_isu.read2
@@ -85,6 +88,12 @@ class ISU extends Module {
         canLaunch := N
     }    
     switch(reg_id_isu.exu){
+        is (PRU_ID){
+            io.isu_pru.valid := canLaunch
+            io.isu_pru.bits.current_pc := io.id_isu.bits.pcNext - 4.U
+            io.isu_pru.bits.pru_op := io.id_isu.bits.op
+            io.isu_pru.bits.current_instr := io.id_isu.bits.current_instr
+        }
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
             iaBundle := DontCare
