@@ -258,7 +258,6 @@ class LSU extends Module{
         val exec_wb = Decoupled(new LSU_WB)
         val flush = Input(Bool())
     }}
-    io.exec_wb.bits.error := DontCare
     io.exec_wb.bits <> DontCare // FIXME
     //printf("io.exec_wb.valid %d io.isu_lsu.ready %d\n", io.exec_wb.valid, io.isu_lsu.ready)
     io.exec_wb.valid:=false.B
@@ -267,9 +266,9 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    when(state_reg=/=LSU_DIE){
-        printf("LSU WORKING\n")
-    }
+    // when(state_reg=/=LSU_DIE){
+    //     printf("LSU WORKING\n")
+    // }
     // printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
     when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
@@ -308,15 +307,22 @@ class LSU extends Module{
     io.dcache.req.valid := false.B
     io.dcache.resp.ready := false.B
 	io.exec_wb.valid := false.B
-
+    io.exec_wb.bits.error := DontCare
+    io.exec_wb.bits.error.enable := N
+    val isLoadException = RegInit(N)
+    val isStoreException = RegInit(N)
 	switch(state_reg){
 		is(LSU_DIE){
             // printf("state:LSU DIE\n")
 			io.exec_wb.valid:=false.B
+            isLoadException := false.B
+            isStoreException := false.B
 		}
 		is(LSU_DECODE){
-            // printf("state:LSU_DECODE\n");
+            printf("@lsu LSU_DECODE\n");
 			val vAddr = Wire(UInt(32.W))
+            isLoadException := false.B
+            isStoreException := false.B
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
             val offset = Wire(UInt(2.W))
             offset := vAddr(1, 0)
@@ -358,12 +364,21 @@ class LSU extends Module{
 			//     io.exec_wb.bits.w_data := DontCare
 			//     state_reg := LSU_DIE
             // }
-            when(io.flush){
-                state_reg := LSU_DIE
-            }
+            // when(r.lsu_op === LSU_LW_OP || r.lsu_op === LSU_SW_OP){
+            //     when((vAddr & 3.U) =/= 0.U){
+            //         isLoadException := Y
+            //         state_reg := LSU_BACK
+            //     }
+            // }
+            // when(r.lsu_op === LSU_LH_OP || r.lsu_op === LSU_LHU_OP || r.lsu_op === LSU_SH_OP){
+            //     when((vAddr & 1.U) =/= 0.U){
+            //         isLoadException := Y
+            //         state_reg := LSU_BACK
+            //     }
+            // }
 		}
 		is(LSU_READ){
-            // printf("state:LSU_READ\n");
+            printf("@lsu LSU_READ\n");
             // printf(p"lsu_load ${read_reg.addr & (~3.U(32.W))}\n")
 			when(!read_reg.en){
 				state_reg := LSU_CALC
@@ -386,7 +401,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_CALC){
-            // printf("state:LSU_CALC\n");
+            printf("@lsu  LSU_CALC\n");
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
@@ -418,7 +433,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_WRITE){
-            // printf("LSU WRITE\n")
+            printf("@lsu  LSU WRITE\n")
             when(io.flush){
                 state_reg := LSU_DIE
             }.otherwise{
@@ -443,9 +458,27 @@ class LSU extends Module{
             }
 		}
 		is (LSU_BACK){
-            // printf("state:LSU_BACK\n");
+            printf("@lsu LSU_BACK\n");
             //printf("lsu ok\n");
             when(!io.flush){
+                // when(isLoadException){
+                //     printf("@lsu error ls\n")
+                //     io.exec_wb.bits.error.enable := Y
+                //     io.exec_wb.bits.error.EPC := r.current_pc
+                //     io.exec_wb.bits.error.excType := ET_ADDR_ERR
+                //     when(VecInit(LSU_SW_OP, LSU_SH_OP).contains(r.lsu_op)){
+                //         printf("@lsu error store address!\n")
+                //         io.exec_wb.bits.error.exeCode := EC_AdES
+                //     }.otherwise{
+                //         printf("@lsu error load address!\n")
+                //         io.exec_wb.bits.error.exeCode := EC_AdEL
+                //     }
+                //     io.exec_wb.bits.error.badVaddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
+                //     isLoadException := N
+                // }.otherwise{
+                //     io.exec_wb.bits.error.enable := N
+                // }
+                printf("@lsu back value is %x\n", io.exec_wb.bits.w_data)
 			    io.exec_wb.valid := isu_lsu_fire && !io.flush
 			    io.exec_wb.bits.w_addr := back_reg.w_addr
 			    io.exec_wb.bits.w_en := back_reg.w_en

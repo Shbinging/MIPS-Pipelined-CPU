@@ -79,6 +79,13 @@ class WriteBack extends Module{
             io.commit.commit_instr := reg_alu_wb.current_instr
             io.commit.commit_pc := reg_alu_wb.current_pc
         }
+        when((lsu_wb_fire && reg_lsu_wb.error.enable)){
+            printf(p"@wb lsu_wb error ${lsu_wb_fire}, ${reg_lsu_wb.error}\n")
+            exception := reg_lsu_wb.error
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_lsu_wb.current_instr
+            io.commit.commit_pc := reg_lsu_wb.current_pc
+        }
         when((pru_wb_fire && reg_pru_wb.error.enable)){
             exception := reg_pru_wb.error
             when(reg_pru_wb.needCommit){
@@ -113,6 +120,11 @@ class WriteBack extends Module{
                 }
         }.otherwise{
             vecOff := 0x180.U
+        }
+        io.cp0_write_out.enableVaddress := N
+        when(exception.excType === ET_ADDR_ERR){
+            io.cp0_write_out.enableVaddress := Y
+            io.cp0_write_out.vAddr := exception.badVaddr
         }
         io.cp0_write_out.ExcCode := exception.exeCode
         printf("@wb excCode %x vecOff %x\n", exception.exeCode, vecOff)

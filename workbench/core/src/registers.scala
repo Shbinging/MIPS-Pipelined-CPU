@@ -58,11 +58,17 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := regs(i).asUInt()
     }
-    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther){
+    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
         val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
         val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
         when(io.cp0_write_in.enableEXL){
             newStatus.EXL := io.cp0_write_in.EXL
+        }
+        when(io.cp0_write_in.enableVaddress){
+            regs(32.U + 8.U)(0) := io.cp0_write_in.vAddr(7, 0)
+            regs(32.U + 8.U)(1) := io.cp0_write_in.vAddr(15, 8)
+            regs(32.U + 8.U)(2) := io.cp0_write_in.vAddr(23, 16)
+            regs(32.U + 8.U)(3) := io.cp0_write_in.vAddr(31, 24)
         }
         when(io.cp0_write_in.enableOther){
             newCause.ExcCode := io.cp0_write_in.ExcCode
