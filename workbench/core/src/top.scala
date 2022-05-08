@@ -17,10 +17,9 @@ class verilator_top extends Module {
     })
 
     val gprs = Module(new GPR)
-    
+   
     val instr_fetch = Module(new InstrFetch)
     val icache = Module(new L1Cache)
-    // val imem = Module(new SimDev) // FIXME: arbit
     
     val instr_decode = Module(new InstrDecode)
     
@@ -31,12 +30,19 @@ class verilator_top extends Module {
     
     val lsu = Module(new LSU)
     val dcache = Module(new L1Cache)
-    // val dmem = Module(new SimDev) // FIXME: arbit
     
     val mdu = Module(new MDU)
 
     val write_back = Module(new WriteBack)
-    
+
+    val tlb = Module(new TLB)
+    val i_tlb_translator = Module(new TLBTranslator)
+    val d_tlb_translator = Module(new TLBTranslator)
+    i_tlb_translator.io.tlb <> tlb.io.entries
+    i_tlb_translator.io.req <> instr_fetch.io.tlb_req
+    instr_fetch.io.tlb_resp <> i_tlb_translator.io.resp
+    // TODO: i_tlb_translator.io.acid <> ?
+
     val mem_arbiter = Module(new Arbiter(new MemReq, 2))
     val mem = Module(new SimDev)
     val arbit_chosen = RegEnable(enable=mem.io.in.req.fire(), next=mem_arbiter.io.chosen)

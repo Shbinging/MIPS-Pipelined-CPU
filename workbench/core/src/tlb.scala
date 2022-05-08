@@ -27,40 +27,48 @@ class TLBTranslator extends Module{
     val io = IO(new Bundle{
         val tlb = Input(Vec(conf.tlb_size, new TLBEntry))
         val asid = Input(UInt(8.W))
-        val va = Input(UInt(conf.addr_width.W))
-        val ref_type = Input(UInt(MX_SZ.W))
-        val pa = Output(UInt(conf.addr_width.W))
-        val tlb_invalid_exception = Output(Bool())
-        val tlb_modified_execption = Output(Bool())
-        val tlb_miss_exception = Output(Bool())
+        val req = new TLBTranslatorReq
+        val resp = new TLBTranslatorOutput
     })
     // FIX Page Size 4096 kB
     val found = Bool()
     val entry = Wire(new EntryLo)
     found := false.B
-    io.tlb_invalid_exception := false.B 
-    io.tlb_modified_execption := false.B
-    io.tlb_miss_exception := false.B 
+    io.resp.exception := ET_None
+    
+    // unmapped addr
+    when(io.req.va >= "h_8000_0000".U && io.req.va < "h_c000_0000".U){ 
+        // uncached
+        when(io.req.va >= "h_a000_0000".U){
+            io.resp.pa := io.req.va - "h_a000_0000".U 
+            io.resp.cached := false.B
+        } .otherwise{
+            io.resp.pa := io.req.va - "h_8000_0000".U 
+            io.resp.cached := true.B
+        }
+    }
 
+    // mapped
+    io.resp.cached := true.B
     for(i <- 0 to conf.tlb_size-1){
         when(
-            (io.tlb(i).hi.vpn2 === (io.va>>12)) && (
+            (io.tlb(i).hi.vpn2 === (io.req.va>>12)) && (
                 (io.tlb(i).lo_0.global & io.tlb(i).lo_1.global) ||
                 (io.tlb(i).hi.asid === io.asid)
             )
         ){
-            entry := Mux(io.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
+            entry := Mux(io.req.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
             when(entry.valid === false.B){
-                io.tlb_invalid_exception := true.B
-            } .elsewhen(entry.dirty===false.B && io.ref_type===MX_WR){
-                io.tlb_modified_execption := true.B
+                io.resp.exception := ET_TLB_Inv
+            } .elsewhen(entry.dirty===false.B && io.req.ref_type===MX_WR){
+                io.resp.exception := ET_TLB_Mod
             }
-            io.pa := Cat(entry.pfn(31, 12), io.va(11, 0))
+            io.resp.pa := Cat(entry.pfn(31, 12), io.req.va(11, 0))
             found := true.B
         }
     }
 
     when(!found){
-        io.tlb_miss_exception := true.B
+        io.resp.exception := ET_TLB_Miss
     }
 }

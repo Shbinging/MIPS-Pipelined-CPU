@@ -38,6 +38,7 @@ class IF_ID extends Bundle{
     // val if_commit = Output(Bool())
     val instr = Output(UInt(conf.data_width.W))
     val pcNext = Output(UInt(conf.addr_width.W))
+    val exception = Output(UInt())
 }
 
 // ID_RF, RF_ISU, ID_ISU
@@ -65,6 +66,8 @@ class ID_ISU extends Bundle{
     // val branch_op= Output(UInt(OPCODE_WIDTH.W)) //see config, use oop
     val pcNext = Output(UInt(conf.addr_width.W)) //currentpc + 4
     val current_instr = Output(UInt(conf.data_width.W))
+
+    val exception = Output(UInt(ET_WIDTH.W))
 }
 
 // ISU_ALU
@@ -78,6 +81,8 @@ class ISU_ALU extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+
+    val exception = Output(UInt(ET_WIDTH.W))
 }
 
 class ISU_BRU extends Bundle{
@@ -124,6 +129,8 @@ class ALU_WB extends Bundle{
     
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+    
+    val exception = Output(UInt(ET_WIDTH.W))
 }
 
 class ALU_PASS extends Bundle{
@@ -142,6 +149,8 @@ class BRU_WB extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+
+    val exception = Output(UInt(ET_WIDTH.W))
 }
 
 class LSU_WB extends Bundle{
@@ -151,6 +160,8 @@ class LSU_WB extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+
+    val exception = Output(UInt(ET_WIDTH.W))
 }
 class MDU_WB extends Bundle{
   val w_en = Output(Bool())
@@ -159,6 +170,8 @@ class MDU_WB extends Bundle{
 
   val current_pc = Output(UInt(conf.addr_width.W))
   val current_instr = Output(UInt(conf.data_width.W))
+
+  val exception = Output(UInt(ET_WIDTH.W))
 }
 
 class WB_COMMMIT extends Bundle{
@@ -186,6 +199,17 @@ class MultiplierIO extends Bundle {
 
 class WrTLB extends Bundle{
   
+}
+
+class TLBTranslatorReq extends Bundle{
+  val va = Input(UInt(conf.addr_width.W))
+  val ref_type = Input(UInt(MX_SZ.W))
+}
+
+class TLBTranslatorResp extends Bundle{
+  val pa = Output(UInt(conf.addr_width.W))
+  val cached = Output(UInt(Bool()))
+  val exception = Output(UInt(ET_WIDTH.W))
 }
 
 // read, write memory
