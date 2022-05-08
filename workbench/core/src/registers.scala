@@ -78,9 +78,11 @@ class GPR extends Module {
             regs(32.U + 14.U)(1) := io.cp0_write_in.epc(15, 8)
             regs(32.U + 14.U)(2) := io.cp0_write_in.epc(23, 16)
             regs(32.U + 14.U)(3) := io.cp0_write_in.epc(31, 24)
+            printf("status %x\n", newStatus.asUInt())
+            printf("cause %x\n", newCause.asUInt())
         }        
     }
     io.cp0_status := regs(32.U + 12.U).asTypeOf(new cp0_Status_12)
-    printf("GPR[8] t0 = %x\n", regs(8).asUInt())
+    //printf("GPR[8] t0 = %x\n", regs(8).asUInt())
 }
 

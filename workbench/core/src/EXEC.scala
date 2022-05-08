@@ -15,6 +15,7 @@ class ALU extends Module{
         val exec_pass = new ALU_PASS
     }}
     io.exec_wb.bits.error := DontCare
+    io.exec_wb.bits.error.enable := N
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
@@ -76,6 +77,20 @@ class ALU extends Module{
     //io.exec_wb.bits.
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
+    when(r.alu_op === ALU_ADD_OP){
+        //TODO:: suboverflow
+        when(A_in(31) === B_in(31) && B_in(31) =/= ALU_out(31)){
+            when(io.exec_wb.fire()){
+                printf("@%x %x+%x=%x add overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+            }
+            //io.exec_wb.bits.Overflow_out := true.B
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.error.excType := ET_Ov
+            io.exec_wb.bits.error.exeCode := EC_Ov
+            //io.exec_wb.bits.error.exeCode := 
+        }
+    }
     io.exec_wb.bits.w_addr := r.rd_addr // io.isu_alu.bits.rd_addr
     when(r.alu_op === ALU_MOVZ_OP){
         io.exec_wb.bits.w_en := isu_alu_prepared && (B_in===0.U)
@@ -109,7 +124,7 @@ class ALU extends Module{
         isu_alu_prepared := Y
     }
     when(isu_alu_prepared){
-        printf("ALU WORKING\n");
+        //printf("ALU WORKING\n");
     }
 }
 
@@ -123,7 +138,7 @@ class BRU extends Module{
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
     io.isu_bru.ready := io.exec_wb.fire() || !isu_bur_fire
     when(isu_bur_fire){
-        printf("BRU WORKING\n");
+        //printf("BRU WORKING\n");
     }
     val bruwb = Wire(new BRU_WB)
     bruwb := DontCare
@@ -445,7 +460,7 @@ class MDU extends Module{
         state := 1.U
     }
     when(state=/=0.U){
-        printf("MDU WORKING\n")
+        //printf("MDU WORKING\n")
     }
     // when(io.isu_mdu.fire()){
     //     printf(p"#### ${io.exec_wb.fire()} or ${!isu_mdu_fired}\n")
@@ -466,11 +481,11 @@ class MDU extends Module{
     dividor.io.data_divisor_valid := false.B
     multiplier.io <> DontCare
     when(state===1.U & !io.flush){
-        printf("start working on ")
+        //printf("start working on ")
         // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
         // mdu_wb_valid := false.B
         when(VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)){
-            printf("div\n")
+            //printf("div\n")
             // div
             dividor.io.data_dividend_valid := true.B
             dividor.io.data_divisor_valid := true.B
@@ -484,7 +499,7 @@ class MDU extends Module{
             )
             state := 3.U
         } .elsewhen(VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
-            printf("mul\n")
+            //printf("mul\n")
             // mul
             multiplier_delay_count := (conf.mul_stages-1).U(3.W)
             multiplier.io.data_a := Cat(
@@ -497,7 +512,7 @@ class MDU extends Module{
             )
             state := 2.U
         } .otherwise{
-            printf(p"mf/mt hi:${hi}, lo:${lo}\n")
+            //printf(p"mf/mt hi:${hi}, lo:${lo}\n")
             // mfhi, mflo
             mdu_wb_reg.w_en := false.B
             when(VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
@@ -510,10 +525,10 @@ class MDU extends Module{
             state := 4.U
         }
     } .elsewhen(state===2.U){
-        printf("multipling \n")
+        //printf("multipling \n")
         multiplier_delay_count := multiplier_delay_count - 1.U
         when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
-            printf("touch! delay 0\n")
+            //printf("touch! delay 0\n")
             multiplier_delay_count := conf.mul_stages.U(3.W)
             mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
             state := 4.U
@@ -534,9 +549,9 @@ class MDU extends Module{
             }
         }
     } .elsewhen(state===3.U){
-        printf("dividing!\n")
+        //printf("dividing!\n")
         when(dividor.io.data_dout_valid){ //VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
-            printf("touch! dividor done 0\n")
+            //printf("touch! dividor done 0\n")
             mdu_wb_reg.w_en := false.B 
             // mdu_wb_valid := true.B
             lo := dividor.io.data_dout_bits(71, 40)
@@ -552,6 +567,6 @@ class MDU extends Module{
     io.exec_wb.valid := (state===4.U) && !io.flush
     io.exec_wb.bits <> mdu_wb_reg
     when(io.exec_wb.valid){
-        printf(p"mdu->wb-bits: ${io.exec_wb.bits}\n reg ${mdu_wb_reg}\n")
+        //printf(p"mdu->wb-bits: ${io.exec_wb.bits}\n reg ${mdu_wb_reg}\n")
     }
 }

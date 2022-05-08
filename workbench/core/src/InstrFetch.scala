@@ -36,7 +36,7 @@ class InstrFetch extends Module{
         pc_reg := pc_reg + 4.U
     } 
     when(io.icache.req.fire()){
-        printf("commit read %x\n", pc_reg)
+        //printf("commit read %x\n", pc_reg)
     }
     // printf(p"dev ready:${io.icache.req.ready}\n")    
     io.icache.req.bits.is_cached := DontCare

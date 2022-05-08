@@ -37,7 +37,7 @@ class WriteBack extends Module{
     io_fire := io.alu_wb.fire() || io.bru_wb.fire() || io.lsu_wb.fire() || io.mdu_wb.fire()
     when(io_fire){
         time := time + 1.U
-        printf(p"commit sum:${time}\n")
+        //printf(p"commit sum:${time}\n")
     }
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
@@ -53,6 +53,7 @@ class WriteBack extends Module{
     io.cp0_write_out.enableEXL := N
     io.commit := DontCare
     when(isException){//exception
+        printf("exception \n")
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -81,8 +82,11 @@ class WriteBack extends Module{
                 }
                 //TODO:: check type
                 vecOff := 0x180.U
+        }.otherwise{
+            vecOff := 0x180.U
         }
         io.cp0_write_out.ExcCode := exception.exeCode
+        printf("@wb excCode %x vecOff %x\n", exception.exeCode, vecOff)
         io.cp0_write_out.EXL := 1.U
         io.wb_if.bits.pc_w_en := Y
 
@@ -91,6 +95,7 @@ class WriteBack extends Module{
         }.otherwise{
             io.wb_if.bits.pc_w_data := 0x80000000L.asUInt(32.W) + vecOff
         }
+        //io.wb_if.bits.pc_w_data :=  0xbfc00200L.asUInt(32.W) + vecOff
     }.elsewhen(bru_wb_fire && reg_bru_wb.noSlot){//jump without delay(ERET)
         io.flush := Y
         io.wb_if.valid := Y

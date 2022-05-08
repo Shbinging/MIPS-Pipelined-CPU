@@ -61,6 +61,11 @@ trait CP0Consts {
   val EC_CpU  = 11.U(EC_WIDTH.W)  // * Coprocessor unusable
   val EC_Ov   = 12.U(EC_WIDTH.W)  // * Arithmetic overflow
   val EC_Tr   = 13.U(EC_WIDTH.W)  // * Trap
+
+  val cp0_status = 44.U(6.W)
+  val cp0_cause = 45.U(6.W)
+  val cp0_epc = 46.U(6.W)
+  val cp0_badvaddr = 40.U(6.W)
 }
 
 trait CacheConsts {
