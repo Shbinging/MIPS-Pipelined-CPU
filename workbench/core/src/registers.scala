@@ -26,48 +26,61 @@ class GPR extends Module {
         val write_in = new GPRWriteInput
         val read_out = new GPRReadOutput
         val gpr_commit = Output(Vec(32, UInt(32.W)))
+        val cp0_write_in = new CP0WriteInput
+        val cp0_status = Output(new cp0_Status_12)
     })
     // TODO: support variable lengths configs
-    val gprs = RegInit(VecInit(Seq.fill(32){VecInit(Seq.fill(4){0.U(8.W)})}))
+
+    //regs(0-31) gpr regs(32-63) cp0
+    val regs = RegInit(VecInit(Seq.fill(64){VecInit(Seq.fill(4){0.U(8.W)})}))
     val time = RegInit(0.U(32.W))
     time := time + 1.U
-    io.read_out.rs_data := gprs(io.read_in.rs_addr).asUInt()
-    io.read_out.rt_data := gprs(io.read_in.rt_addr).asUInt()
-   
-    when(io.write_in.w_en.asUInt() =/= 0.U & io.write_in.addr =/= 0.U){
+    io.read_out.rs_data := regs(io.read_in.rs_addr).asUInt()
+    io.read_out.rt_data := regs(io.read_in.rt_addr).asUInt()
+
+    when(io.write_in.w_en.asUInt() =/= 0.U && io.write_in.addr =/= 0.U){
         //printf(p"${time}: Write to regs: ${io.write_in.addr}, ${io.write_in.data}, ${io.write_in.w_en}\n")
         when(io.write_in.w_en(0)){
-            gprs(io.write_in.addr)(0) := io.write_in.data(7, 0)
+            regs(io.write_in.addr)(0) := io.write_in.data(7, 0)
         }
         when(io.write_in.w_en(1)){
-            gprs(io.write_in.addr)(1) := io.write_in.data(15, 8)
+            regs(io.write_in.addr)(1) := io.write_in.data(15, 8)
         }
         when(io.write_in.w_en(2)){
-            gprs(io.write_in.addr)(2) := io.write_in.data(23, 16)
+            regs(io.write_in.addr)(2) := io.write_in.data(23, 16)
         }
         when(io.write_in.w_en(3)){
-            gprs(io.write_in.addr)(3) := io.write_in.data(31, 24)
+            regs(io.write_in.addr)(3) := io.write_in.data(31, 24)
         }
     }
     //printf("readin %x %x\n", io.read_in.rs_addr, io.read_in.rt_addr)
     for( i <- 0 to 31){
-        io.gpr_commit(i) := gprs(i).asUInt()
+        io.gpr_commit(i) := regs(i).asUInt()
     }
-    printf("GPR[8] t0 = %x\n", gprs(8).asUInt())
+    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther){
+        val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
+        val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
+        when(io.cp0_write_in.enableEXL){
+            newStatus.EXL := io.cp0_write_in.EXL
+        }
+        when(io.cp0_write_in.enableOther){
+            newCause.ExcCode := io.cp0_write_in.ExcCode
+            newCause.BD := io.cp0_write_in.BD
+            regs(32.U + 12.U)(0) := newStatus.asUInt()(7, 0)
+            regs(32.U + 12.U)(1) := newStatus.asUInt()(15, 8)
+            regs(32.U + 12.U)(2) := newStatus.asUInt()(23, 16)
+            regs(32.U + 12.U)(3) := newStatus.asUInt()(31, 24)
+            regs(32.U + 13.U)(0) := newCause.asUInt()(7, 0)
+            regs(32.U + 13.U)(1) := newCause.asUInt()(15, 8)
+            regs(32.U + 13.U)(2) := newCause.asUInt()(23, 16)
+            regs(32.U + 13.U)(3) := newCause.asUInt()(31, 24)
+            regs(32.U + 14.U)(0) := io.cp0_write_in.epc(7, 0)
+            regs(32.U + 14.U)(1) := io.cp0_write_in.epc(15, 8)
+            regs(32.U + 14.U)(2) := io.cp0_write_in.epc(23, 16)
+            regs(32.U + 14.U)(3) := io.cp0_write_in.epc(31, 24)
+        }        
+    }
+    io.cp0_status := regs(32.U + 12.U).asTypeOf(new cp0_Status_12)
+    printf("GPR[8] t0 = %x\n", regs(8).asUInt())
 }
 
-// CP 0 
-class EntryHi extends Bundle{
-    val vpn2 = UInt(19.W)
-    val zero_padding = UInt(5.W)
-    val asid = UInt(8.W)
-}
-
-class EntryLo extends Bundle{
-    val zero_padding = UInt(2.W)
-    val pfn = UInt(24.W)
-    val coherence = UInt(3.W)
-    val dirty = Bool()
-    val valid = Bool()
-    val global = Bool()
-}

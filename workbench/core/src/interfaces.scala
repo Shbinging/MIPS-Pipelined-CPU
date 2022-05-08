@@ -11,6 +11,13 @@ import njumips.consts._
 //     val w_data = Input(UInt(conf.addr_width.W))
 // }
 
+//Exception
+class exceptionInfo extends Bundle{
+    val enable = Bool()
+    val EPC = UInt(32.W)
+    val badVaddr = UInt(32.W)
+    val exeCode = UInt(5.W)
+}
 // GPR
 class GPRReadIntput extends Bundle{
     val rs_addr = Input(UInt(REG_SZ.W))
@@ -25,7 +32,17 @@ class GPRWriteInput extends Bundle{
     val addr = Input(UInt(REG_SZ.W))
     val data = Input(UInt(conf.data_width.W))
 }
+//CP0
 
+
+class CP0WriteInput extends Bundle{
+    val enableEXL = Input(Bool())
+    val enableOther = Input(Bool())
+    val BD = Input(UInt(1.W))
+    val EXL = Input(UInt(1.W))
+    val ExcCode = Input(UInt(5.W))
+    val epc = Input(UInt(32.W))
+}
 // WB_IF 
 class RB_IF extends Bundle{
   val pc_w_en = Output(Bool())
@@ -114,6 +131,7 @@ class ISU_MDU extends Bundle{
   val current_instr = Output(UInt(conf.data_width.W))
 }
 
+
 // EXEC
 class ALU_WB extends Bundle{
     val w_en = Output(Bool())
@@ -124,6 +142,7 @@ class ALU_WB extends Bundle{
     
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+    val error = Output(new exceptionInfo)
 }
 
 class ALU_PASS extends Bundle{
@@ -142,6 +161,7 @@ class BRU_WB extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+    val noSlot = Output(Bool())
 }
 
 class LSU_WB extends Bundle{
@@ -151,7 +171,9 @@ class LSU_WB extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
+    val error = Output(new exceptionInfo)
 }
+
 class MDU_WB extends Bundle{
   val w_en = Output(Bool())
   val w_addr = Output(UInt(REG_SZ.W))
@@ -159,6 +181,7 @@ class MDU_WB extends Bundle{
 
   val current_pc = Output(UInt(conf.addr_width.W))
   val current_instr = Output(UInt(conf.data_width.W))
+  val error = Output(new exceptionInfo)
 }
 
 class WB_COMMMIT extends Bundle{
@@ -226,4 +249,71 @@ class CommitIO extends Bundle {
   val rd_idx = Output(UInt(REG_SZ.W))
   val wdata = Output(UInt(conf.xprlen.W))
   val wen = Output(Bool())
+}
+
+// CP 0 
+class EntryHi extends Bundle{
+    val vpn2 = UInt(19.W)
+    val zero_padding = UInt(5.W)
+    val asid = UInt(8.W)
+}
+
+class EntryLo extends Bundle{
+    val zero_padding = UInt(2.W)
+    val pfn = UInt(24.W)
+    val coherence = UInt(3.W)
+    val dirty = Bool()
+    val valid = Bool()
+    val global = Bool()
+}
+
+class cp0_Status_12 extends Bundle{
+    val ID = UInt(1.W)
+    val EXL = UInt(1.W)
+    val ERL = UInt(1.W)
+    val R0 = UInt(1.W)
+    val UM = UInt(1.W)
+    val UX = UInt(1.W)
+    val SX = UInt(1.W)
+    val KX = UInt(1.W)
+    val IM = UInt(8.W)
+    val Impl = UInt(2.W)
+    val Empty = UInt(1.W)
+    val NMI = UInt(1.W)
+    val SR = UInt(1.W)
+    val TS = UInt(1.W)
+    val BEV = UInt(1.W)
+    val PX = UInt(1.W)
+    val MX = UInt(1.W)
+    val RE = UInt(1.W)
+    val FR = UInt(1.W)
+    val RP = UInt(1.W)
+    val CU = UInt(4.W)
+}
+
+class cp0_Cause_13 extends Bundle{
+    val Empty1 = UInt(2.W)
+    val ExcCode = UInt(5.W)
+    val Empty2 = UInt(1.W)
+    val IP = UInt(8.W)
+    val Empty3 = UInt(6.W)
+    val WP = UInt(1.W)
+    val IV = UInt(1.W)
+    val Empty4 = UInt(2.W)
+    val PCI = UInt(1.W)
+    val DC = UInt(1.W)
+    val CE = UInt(2.W)
+    val TI = UInt(1.W)
+    val BD = UInt(1.W)
+}
+
+class cp0_Config_16 extends Bundle{
+    val K0  = UInt(3.W)
+    val Empty1 = UInt(4.W)
+    val MT = UInt(3.W)
+    val AR = UInt(3.W)
+    val AT = UInt(2.W)
+    val BE = UInt(1.W)
+    val Impl = UInt(15.W)
+    val M = UInt(1.W)
 }

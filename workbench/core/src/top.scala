@@ -96,7 +96,9 @@ class verilator_top extends Module {
     write_back.io.bru_wb <> bru.io.exec_wb
     write_back.io.lsu_wb <> lsu.io.exec_wb
     write_back.io.mdu_wb <> mdu.io.exec_wb
-
+    write_back.io.cp0_write_out <> gprs.io.cp0_write_in
+    write_back.io.cp0_status := gprs.io.cp0_status
+    
     gprs.io.write_in <> write_back.io.gpr_wr
     //printf(p"write_back io gpr wr: ${write_back.io.gpr_wr}\n")
     io.commit <> DontCare

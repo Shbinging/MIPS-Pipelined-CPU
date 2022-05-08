@@ -15,6 +15,8 @@ class WriteBack extends Module{
         val commit = Output(new WB_COMMMIT)
         val flush = Output(Bool())
         val gpr_wr = Flipped(new GPRWriteInput)
+        val cp0_status = Input(new cp0_Status_12)
+        val cp0_write_out = Flipped(new CP0WriteInput)
     })
     val time = RegInit(0.U(32.W))
 
@@ -39,11 +41,66 @@ class WriteBack extends Module{
     }
     io.gpr_wr <> DontCare
     io.gpr_wr.w_en := 0.U
-     io.wb_if.bits.pc_w_data <> DontCare
+    io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
-
+    io.cp0_write_out <> DontCare
     val isBranch = RegEnable(io.bru_wb.bits.w_pc_en && io.bru_wb.fire(), N, io_fire)
+    val isLastBranch = RegEnable(io.bru_wb.fire(), N, io_fire)
+    val isSlot = RegNext(isLastBranch && io_fire, N)
     val needJump = RegNext(isBranch && io_fire, N)
+    val isException = WireInit((alu_wb_fire && reg_alu_wb.error.enable) || (lsu_wb_fire && reg_lsu_wb.error.enable) || (mdu_wb_fire && reg_mdu_wb.error.enable))
+    io.cp0_write_out.enableOther := N
+    io.cp0_write_out.enableEXL := N
+    io.commit := DontCare
+    when(isException){//exception
+        io.flush := Y
+        io.wb_if.valid := Y
+        isBranch := N
+        needJump := N
+        //TODO::exception fill
+        val exception = Wire(new exceptionInfo)
+        exception := DontCare
+        when((alu_wb_fire && reg_alu_wb.error.enable)){
+            exception := reg_alu_wb.error
+        }
+        
+        io.cp0_write_out.enableEXL := Y
+        io.cp0_write_out.enableOther := Y
+        // io.cp0_write_out.Cause := io.cp0_read_in.Cause
+        // io.cp0_write_out.Status := io.cp0_read_in.Status
+        val vecOff = WireInit(0.U(32.W))
+        when(io.cp0_status.EXL === 0.U){
+                when(isSlot){
+                    io.cp0_write_out.epc := exception.EPC - 4.U
+                    io.cp0_write_out.BD := 1.U
+                    // io.cp0_write_out.Cause.BD := 1.U
+                }.otherwise{
+                    io.cp0_write_out.epc := exception.EPC
+                    io.cp0_write_out.BD := 0.U 
+                    // io.cp0_write_out.Cause.BD := 0.U
+                }
+                //TODO:: check type
+                vecOff := 0x180.U
+        }
+        io.cp0_write_out.ExcCode := exception.exeCode
+        io.cp0_write_out.EXL := 1.U
+        io.wb_if.bits.pc_w_en := Y
+
+        when(io.cp0_status.BEV === 1.U){
+            io.wb_if.bits.pc_w_data :=  0xbfc00200L.asUInt(32.W) + vecOff
+        }.otherwise{
+            io.wb_if.bits.pc_w_data := 0x80000000L.asUInt(32.W) + vecOff
+        }
+    }.elsewhen(bru_wb_fire && reg_bru_wb.noSlot){//jump without delay(ERET)
+        io.flush := Y
+        io.wb_if.valid := Y
+        isBranch := N
+        needJump := N
+        io.cp0_write_out.enableEXL := Y
+        io.cp0_write_out.EXL := 0.U
+        io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
+        io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
+    }.otherwise{
     when(needJump){
         io.flush := Y
         io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
@@ -93,8 +150,7 @@ class WriteBack extends Module{
         io.commit.commit := true.B
         printf("mdu wb %x\n", io.commit.commit_pc);
     }
-
-
+    }
     //  when(io.wb_if.valid){
     //     printf(p"${reg_exec_wb}")
     // }

@@ -14,6 +14,7 @@ class ALU extends Module{
         val flush = Input(Bool())
         val exec_pass = new ALU_PASS
     }}
+    io.exec_wb.bits.error := DontCare
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
@@ -128,6 +129,7 @@ class BRU extends Module{
     bruwb := DontCare
     bruwb.w_en := false.B
     bruwb.w_pc_en := false.B 
+    bruwb.noSlot := false.B
     val needJump = MuxLookup(r.bru_op, false.B, Array(
         BRU_BEQ_OP -> (r.rsData === r.rtData).asBool(),
         BRU_BNE_OP -> (r.rsData =/= r.rtData).asBool(),
@@ -140,7 +142,8 @@ class BRU extends Module{
         BRU_J_OP -> true.B,
         BRU_JAL_OP -> true.B,
         BRU_JR_OP -> true.B,
-        BRU_JALR_OP -> true.B
+        BRU_JALR_OP -> true.B,
+        BRU_ERET_OP -> true.B
     ))
     when(needJump){
         bruwb.w_pc_en := true.B
@@ -149,6 +152,7 @@ class BRU extends Module{
             BRU_JAL_OP -> Cat(r.pcNext(31, 28), Cat(r.instr_index, "b00".U(2.W))),
             BRU_JR_OP -> r.rsData,
             BRU_JALR_OP -> r.rsData,
+            BRU_ERET_OP -> r.rsData
         ))
         // when(r.bru_op === BRU_JALR_OP){
         //     printf(p"BRANCH WRITE TO ${r.rd} ${r.bru_op}\n")
@@ -156,6 +160,9 @@ class BRU extends Module{
         //     bruwb.w_addr := r.rd
         //     bruwb.w_data := r.pcNext + 4.U
         // }
+    }
+    when(r.bru_op === BRU_ERET_OP){
+        bruwb.noSlot := Y
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
         // when(r.bru_op === BRU_JAL_OP){
@@ -185,6 +192,7 @@ class LSU extends Module{
         val exec_wb = Decoupled(new LSU_WB)
         val flush = Input(Bool())
     }}
+    io.exec_wb.bits.error := DontCare
     io.exec_wb.bits <> DontCare // FIXME
     //printf("io.exec_wb.valid %d io.isu_lsu.ready %d\n", io.exec_wb.valid, io.isu_lsu.ready)
     io.exec_wb.valid:=false.B
@@ -421,6 +429,7 @@ class MDU extends Module{
         val exec_wb = Decoupled(new MDU_WB)
         val flush = Input(Bool())
     })
+    io.exec_wb.bits.error := DontCare
     val multiplier = Module(new Multiplier)
     val dividor = Module(new Divider)
     

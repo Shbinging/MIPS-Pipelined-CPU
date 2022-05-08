@@ -96,7 +96,7 @@ trait CacheConsts {
 }
 
 trait InstrConsts {
-  val REG_SZ    = 5;
+  val REG_SZ    = 6;
   val IMM_SZ    = 16;
   val SHAMT_SZ  = 5;
 }
@@ -158,6 +158,7 @@ trait ExecUnitIndices {
   val BRU_JAL_OP= "b1001".U(OPCODE_WIDTH.W) 
   val BRU_JR_OP= "b1010".U(OPCODE_WIDTH.W) 
   val BRU_JALR_OP= "b1011".U(OPCODE_WIDTH.W) 
+  val BRU_ERET_OP = "b1100".U(OPCODE_WIDTH.W)
 
   val LSU_LW_OP    = "b0000".U(OPCODE_WIDTH.W)
   val LSU_LH_OP    = "b0001".U(OPCODE_WIDTH.W)
@@ -204,6 +205,11 @@ trait ExecUnitIndices {
   val MDU_MSUB_OP = "b1010".U(OPCODE_WIDTH.W)
   val MDU_MSUBU_OP = "b1011".U(OPCODE_WIDTH.W)
   val MDU_MUL_OP = "b1100".U(OPCODE_WIDTH.W)
+
+  //PRU
+  val PRU_MFC0_OP = 0.U(4.W)
+  val PRU_MTC0_OP = 1.U(4.W)
+  val PRU_ERET_OP = 2.U(4.W)
 }
 
 trait InstrPattern {
@@ -283,6 +289,10 @@ trait InstrPattern {
   val MADDU = BitPat("b011100??????????0000000000000001")
   val MSUB  = BitPat("b011100??????????0000000000000100")
   val MSUBU = BitPat("b011100??????????0000000000000101")
+
+  val MFC0 = BitPat("b01000000000??????????00000000???")
+  val MTC0 = BitPat("b01000000100??????????00000000???")
+  val ERET = BitPat("b01000010000000000000000000011000")
 }
 
 object consts extends InstrPattern
