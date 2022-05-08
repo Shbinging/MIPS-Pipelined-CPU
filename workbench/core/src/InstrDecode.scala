@@ -108,8 +108,9 @@ class InstrDecode extends Module{
             MFC0 -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, rt, 32.U + rd, 0.U),
             MTC0 -> List(32.U + rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, 32.U + rd, rt, 0.U),
             ERET -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_ERET_OP, 0.U, 32.U + 14.U, 0.U),
-            SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U) //syscall 翻译成addi $0, $0, 0
-        )
+            SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), //syscall 翻译成addi $0, $0, 0
+            BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U),
+            )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)
     io.id_isu.bits.shamt_rs_sel := decoded_instr(1)
@@ -120,7 +121,11 @@ class InstrDecode extends Module{
     io.id_isu.bits.write := decoded_instr(6)
     io.id_isu.bits.read1 := decoded_instr(7)
     io.id_isu.bits.read2 := decoded_instr(8)
+    
     when(io.id_isu.fire()){
+        when(io.id_isu.bits.exu === PRU_ID){
+            printf("@idu pru_op is %d\n", io.id_isu.bits.op)
+        }
         //printf(p"id isu bits ${io.id_isu.bits}\n")
     }
     io.id_isu.valid := if_id_reg_prepared && !io.flush

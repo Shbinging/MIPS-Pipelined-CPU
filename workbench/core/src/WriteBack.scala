@@ -81,9 +81,11 @@ class WriteBack extends Module{
         }
         when((pru_wb_fire && reg_pru_wb.error.enable)){
             exception := reg_pru_wb.error
-            io.commit.commit := Y
-            io.commit.commit_instr := reg_pru_wb.current_instr
-            io.commit.commit_pc := reg_pru_wb.current_pc
+            when(reg_pru_wb.needCommit){
+                io.commit.commit := Y
+                io.commit.commit_instr := reg_pru_wb.current_instr
+                io.commit.commit_pc := reg_pru_wb.current_pc
+            }
         }
         
         io.cp0_write_out.enableEXL := Y

@@ -90,9 +90,10 @@ class ISU extends Module {
     switch(reg_id_isu.exu){
         is (PRU_ID){
             io.isu_pru.valid := canLaunch
-            io.isu_pru.bits.current_pc := io.id_isu.bits.pcNext - 4.U
-            io.isu_pru.bits.pru_op := io.id_isu.bits.op
-            io.isu_pru.bits.current_instr := io.id_isu.bits.current_instr
+            io.isu_pru.bits.current_pc := reg_id_isu.pcNext - 4.U
+            printf("@isu pru_op %d\n", reg_id_isu.op(3, 0))
+            io.isu_pru.bits.pru_op := reg_id_isu.op(3, 0)
+            io.isu_pru.bits.current_instr := reg_id_isu.current_instr
         }
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)

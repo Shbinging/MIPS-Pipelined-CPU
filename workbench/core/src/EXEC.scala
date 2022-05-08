@@ -16,15 +16,26 @@ class PRU extends Module{
     
     val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
     io.exec_wb.bits := DontCare
-    io.exec_wb.bits.current_pc := io.isu_pru.bits.current_pc
-    io.exec_wb.bits.current_instr := io.isu_pru.bits.current_instr
+    io.exec_wb.bits.current_pc := r.current_pc
+    io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.bits.error.enable := Y
     io.exec_wb.bits.needCommit := N
+    io.exec_wb.bits.error.EPC := r.current_pc
+    when(io.exec_wb.fire()){
+        printf("@pru pru op is %d\n", r.pru_op)
+    }
     switch(r.pru_op){
         is(PRU_SYSCALL_OP){
-            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.needCommit := Y
+        }
+        is(PRU_BREAK_OP){
+            io.exec_wb.bits.error.excType := ET_Sys
+            io.exec_wb.bits.error.exeCode := EC_Bp
+            when(io.exec_wb.fire()){
+                printf("break commit = 1\n")
+            }
             io.exec_wb.bits.needCommit := Y
         }
     }
