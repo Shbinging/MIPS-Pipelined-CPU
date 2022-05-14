@@ -5,7 +5,47 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 
-
+class PRU extends Module{
+    val io = IO(new Bundle{
+        val isu_pru = Flipped(Decoupled(new ISU_PRU))
+        val flush = Input(Bool())
+        val exec_wb = Decoupled(new PRU_WB)  
+    })
+    val isu_pru_prepared = RegInit(N)
+    io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
+    
+    val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
+    io.exec_wb.bits := DontCare
+    io.exec_wb.bits.current_pc := r.current_pc
+    io.exec_wb.bits.current_instr := r.current_instr
+    io.exec_wb.bits.error.enable := Y
+    io.exec_wb.bits.needCommit := N
+    io.exec_wb.bits.error.EPC := r.current_pc
+    when(io.exec_wb.fire()){
+        printf("@pru pru op is %d\n", r.pru_op)
+    }
+    switch(r.pru_op){
+        is(PRU_SYSCALL_OP){
+            io.exec_wb.bits.error.excType := ET_Sys
+            io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.needCommit := Y
+        }
+        is(PRU_BREAK_OP){
+            io.exec_wb.bits.error.excType := ET_Sys
+            io.exec_wb.bits.error.exeCode := EC_Bp
+            when(io.exec_wb.fire()){
+                printf("break commit = 1\n")
+            }
+            io.exec_wb.bits.needCommit := Y
+        }
+    }
+    when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
+        isu_pru_prepared := N
+    } .elsewhen (!io.flush && io.isu_pru.fire()) {
+        isu_pru_prepared := Y
+    }
+    io.exec_wb.valid := isu_pru_prepared && !io.flush
+}
 
 class ALU extends Module{
     val io = IO{new Bundle{
@@ -14,6 +54,8 @@ class ALU extends Module{
         val flush = Input(Bool())
         val exec_pass = new ALU_PASS
     }}
+    io.exec_wb.bits.error := DontCare
+    io.exec_wb.bits.error.enable := N
     val isu_alu_prepared = RegNext(false.B)
     val r = RegEnable(io.isu_alu.bits, io.isu_alu.fire())
     io.isu_alu.ready := io.exec_wb.fire() || !isu_alu_prepared
@@ -75,6 +117,31 @@ class ALU extends Module{
     //io.exec_wb.bits.
     io.exec_wb.bits.ALU_out := ALU_out
     io.exec_wb.bits.Overflow_out := false.B //XXX:modify when need exception
+    //OVERFLOW
+    when(r.alu_op === ALU_ADD_OP){ 
+        when(A_in(31) === B_in(31) && B_in(31) =/= ALU_out(31)){
+            when(io.exec_wb.fire()){
+                printf("@%x %x+%x=%x add overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+            }
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.error.excType := ET_Ov
+            io.exec_wb.bits.error.exeCode := EC_Ov
+        }
+    }
+    when(r.alu_op === ALU_SUB_OP){
+        when(A_in(31) === (-(B_in.asSInt())).asUInt()(31) && A_in(31) =/= ALU_out(31)){
+            when(io.exec_wb.fire()){
+                printf("@%x %x+%x=%x sub overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+            }
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.error.excType := ET_Ov
+            io.exec_wb.bits.error.exeCode := EC_Ov
+        }
+    }
+
+
     io.exec_wb.bits.w_addr := r.rd_addr // io.isu_alu.bits.rd_addr
     when(r.alu_op === ALU_MOVZ_OP){
         io.exec_wb.bits.w_en := isu_alu_prepared && (B_in===0.U)
@@ -108,7 +175,7 @@ class ALU extends Module{
         isu_alu_prepared := Y
     }
     when(isu_alu_prepared){
-        printf("ALU WORKING\n");
+        //printf("ALU WORKING\n");
     }
 }
 
@@ -122,12 +189,13 @@ class BRU extends Module{
     val r = RegEnableUse(io.isu_bru.bits, io.isu_bru.fire())
     io.isu_bru.ready := io.exec_wb.fire() || !isu_bur_fire
     when(isu_bur_fire){
-        printf("BRU WORKING\n");
+        //printf("BRU WORKING\n");
     }
     val bruwb = Wire(new BRU_WB)
     bruwb := DontCare
     bruwb.w_en := false.B
     bruwb.w_pc_en := false.B 
+    bruwb.noSlot := false.B
     val needJump = MuxLookup(r.bru_op, false.B, Array(
         BRU_BEQ_OP -> (r.rsData === r.rtData).asBool(),
         BRU_BNE_OP -> (r.rsData =/= r.rtData).asBool(),
@@ -140,7 +208,8 @@ class BRU extends Module{
         BRU_J_OP -> true.B,
         BRU_JAL_OP -> true.B,
         BRU_JR_OP -> true.B,
-        BRU_JALR_OP -> true.B
+        BRU_JALR_OP -> true.B,
+        BRU_ERET_OP -> true.B
     ))
     when(needJump){
         bruwb.w_pc_en := true.B
@@ -149,6 +218,7 @@ class BRU extends Module{
             BRU_JAL_OP -> Cat(r.pcNext(31, 28), Cat(r.instr_index, "b00".U(2.W))),
             BRU_JR_OP -> r.rsData,
             BRU_JALR_OP -> r.rsData,
+            BRU_ERET_OP -> r.rsData
         ))
         // when(r.bru_op === BRU_JALR_OP){
         //     printf(p"BRANCH WRITE TO ${r.rd} ${r.bru_op}\n")
@@ -156,6 +226,9 @@ class BRU extends Module{
         //     bruwb.w_addr := r.rd
         //     bruwb.w_data := r.pcNext + 4.U
         // }
+    }
+    when(r.bru_op === BRU_ERET_OP){
+        bruwb.noSlot := Y
     }
     when(VecInit(BRU_BGEZAL_OP, BRU_BLTZAL_OP, BRU_JAL_OP, BRU_JALR_OP).contains(r.bru_op)){
         // when(r.bru_op === BRU_JAL_OP){
@@ -193,9 +266,9 @@ class LSU extends Module{
     val r = RegEnable(io.isu_lsu.bits, io.isu_lsu.fire())
     val state_reg = RegInit(LSU_DIE)
 
-    when(state_reg=/=LSU_DIE){
-        printf("LSU WORKING\n")
-    }
+    // when(state_reg=/=LSU_DIE){
+    //     printf("LSU WORKING\n")
+    // }
     // printf("io.flush %d fire %d\n", io.flush, io.isu_lsu.fire())
     when (io.flush || (!io.isu_lsu.fire() && io.exec_wb.fire())) {
         isu_lsu_fire := N
@@ -234,15 +307,22 @@ class LSU extends Module{
     io.dcache.req.valid := false.B
     io.dcache.resp.ready := false.B
 	io.exec_wb.valid := false.B
-
+    io.exec_wb.bits.error := DontCare
+    io.exec_wb.bits.error.enable := N
+    val isLoadException = RegInit(N)
+    val isStoreException = RegInit(N)
 	switch(state_reg){
 		is(LSU_DIE){
             // printf("state:LSU DIE\n")
 			io.exec_wb.valid:=false.B
+            isLoadException := false.B
+            isStoreException := false.B
 		}
 		is(LSU_DECODE){
-            // printf("state:LSU_DECODE\n");
+            //printf("@lsu LSU_DECODE\n");
 			val vAddr = Wire(UInt(32.W))
+            isLoadException := false.B
+            isStoreException := false.B
 			vAddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
             val offset = Wire(UInt(2.W))
             offset := vAddr(1, 0)
@@ -284,12 +364,24 @@ class LSU extends Module{
 			//     io.exec_wb.bits.w_data := DontCare
 			//     state_reg := LSU_DIE
             // }
+            when(r.lsu_op === LSU_LW_OP || r.lsu_op === LSU_SW_OP){
+                when((vAddr & 3.U) =/= 0.U){
+                    isLoadException := Y
+                    state_reg := LSU_BACK
+                }
+            }
+            when(r.lsu_op === LSU_LH_OP || r.lsu_op === LSU_LHU_OP || r.lsu_op === LSU_SH_OP){
+                when((vAddr & 1.U) =/= 0.U){
+                    isLoadException := Y
+                    state_reg := LSU_BACK
+                }
+            }
             when(io.flush){
                 state_reg := LSU_DIE
             }
 		}
 		is(LSU_READ){
-            // printf("state:LSU_READ\n");
+            //printf("@lsu LSU_READ\n");
             // printf(p"lsu_load ${read_reg.addr & (~3.U(32.W))}\n")
 			when(!read_reg.en){
 				state_reg := LSU_CALC
@@ -312,7 +404,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_CALC){
-            // printf("state:LSU_CALC\n");
+            //printf("@lsu  LSU_CALC\n");
 			when(exec_reg.preRead){
 				val shiftMask1 = VecInit(0x00ffffff.U, 0x0000ffff.U, 0x000000ff.U, 0x0.U)
 				val shiftMask2 = VecInit(0x0.U, 0xff000000L.U, 0xffff0000L.U, 0xffffff00L.U)
@@ -334,7 +426,7 @@ class LSU extends Module{
 					(exec_reg.func === LSU_FUNC_WWR) ->((r.rtData << (index << 3)) | (exec_reg.preReadData & shiftMask1(~index))).asTypeOf(UInt(32.W))
 				)
 				).asTypeOf(UInt(32.W))
-                printf("EXEC PREREAD: %x %x, %x\n", exec_reg.preReadDataFull, time8(len_rwl), ((r.rtData << time8(len_rwl))(31, 0) >> time8(len_rwl)))
+                //printf("EXEC PREREAD: %x %x, %x\n", exec_reg.preReadDataFull, time8(len_rwl), ((r.rtData << time8(len_rwl))(31, 0) >> time8(len_rwl)))
 			}.otherwise{
 				write_reg.w_data := r.rtData
 			}
@@ -344,7 +436,7 @@ class LSU extends Module{
             }
 		}
 		is (LSU_WRITE){
-            // printf("LSU WRITE\n")
+            //printf("@lsu  LSU WRITE\n")
             when(io.flush){
                 state_reg := LSU_DIE
             }.otherwise{
@@ -369,9 +461,26 @@ class LSU extends Module{
             }
 		}
 		is (LSU_BACK){
-            // printf("state:LSU_BACK\n");
+            //printf("@lsu LSU_BACK\n");
             //printf("lsu ok\n");
             when(!io.flush){
+                when(isLoadException){
+                    io.exec_wb.bits.error.enable := Y
+                    io.exec_wb.bits.error.EPC := r.current_pc
+                    io.exec_wb.bits.error.excType := ET_ADDR_ERR
+                    when(VecInit(LSU_SW_OP, LSU_SH_OP).contains(r.lsu_op)){
+                        printf("@lsu error store address!\n")
+                        io.exec_wb.bits.error.exeCode := EC_AdES
+                    }.otherwise{
+                        printf("@lsu error load address!\n")
+                        io.exec_wb.bits.error.exeCode := EC_AdEL
+                    }
+                    io.exec_wb.bits.error.badVaddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
+                    isLoadException := N
+                }.otherwise{
+                    io.exec_wb.bits.error.enable := N
+                }
+                //printf("@lsu back value is %x\n", io.exec_wb.bits.w_data)
 			    io.exec_wb.valid := isu_lsu_fire && !io.flush
 			    io.exec_wb.bits.w_addr := back_reg.w_addr
 			    io.exec_wb.bits.w_en := back_reg.w_en
@@ -421,6 +530,7 @@ class MDU extends Module{
         val exec_wb = Decoupled(new MDU_WB)
         val flush = Input(Bool())
     })
+    io.exec_wb.bits.error := DontCare
     val multiplier = Module(new Multiplier)
     val dividor = Module(new Divider)
     
@@ -436,7 +546,7 @@ class MDU extends Module{
         state := 1.U
     }
     when(state=/=0.U){
-        printf("MDU WORKING\n")
+        //printf("MDU WORKING\n")
     }
     // when(io.isu_mdu.fire()){
     //     printf(p"#### ${io.exec_wb.fire()} or ${!isu_mdu_fired}\n")
@@ -457,11 +567,11 @@ class MDU extends Module{
     dividor.io.data_divisor_valid := false.B
     multiplier.io <> DontCare
     when(state===1.U & !io.flush){
-        printf("start working on ")
+        //printf("start working on ")
         // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
         // mdu_wb_valid := false.B
         when(VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)){
-            printf("div\n")
+            //printf("div\n")
             // div
             dividor.io.data_dividend_valid := true.B
             dividor.io.data_divisor_valid := true.B
@@ -475,7 +585,7 @@ class MDU extends Module{
             )
             state := 3.U
         } .elsewhen(VecInit(MDU_MUL_OP, MDU_MULT_OP, MDU_MULTU_OP, MDU_MADD_OP, MDU_MADDU_OP, MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
-            printf("mul\n")
+            //printf("mul\n")
             // mul
             multiplier_delay_count := (conf.mul_stages-1).U(3.W)
             multiplier.io.data_a := Cat(
@@ -488,7 +598,7 @@ class MDU extends Module{
             )
             state := 2.U
         } .otherwise{
-            printf(p"mf/mt hi:${hi}, lo:${lo}\n")
+            //printf(p"mf/mt hi:${hi}, lo:${lo}\n")
             // mfhi, mflo
             mdu_wb_reg.w_en := false.B
             when(VecInit(MDU_MFHI_OP, MDU_MFLO_OP).contains(isu_mdu_reg.mdu_op)){
@@ -501,10 +611,10 @@ class MDU extends Module{
             state := 4.U
         }
     } .elsewhen(state===2.U){
-        printf("multipling \n")
+        //printf("multipling \n")
         multiplier_delay_count := multiplier_delay_count - 1.U
         when(multiplier_delay_count === 0.U(3.W)){  // Multiplier OK
-            printf("touch! delay 0\n")
+            //printf("touch! delay 0\n")
             multiplier_delay_count := conf.mul_stages.U(3.W)
             mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
             state := 4.U
@@ -525,9 +635,9 @@ class MDU extends Module{
             }
         }
     } .elsewhen(state===3.U){
-        printf("dividing!\n")
+        //printf("dividing!\n")
         when(dividor.io.data_dout_valid){ //VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
-            printf("touch! dividor done 0\n")
+            //printf("touch! dividor done 0\n")
             mdu_wb_reg.w_en := false.B 
             // mdu_wb_valid := true.B
             lo := dividor.io.data_dout_bits(71, 40)
@@ -543,6 +653,6 @@ class MDU extends Module{
     io.exec_wb.valid := (state===4.U) && !io.flush
     io.exec_wb.bits <> mdu_wb_reg
     when(io.exec_wb.valid){
-        printf(p"mdu->wb-bits: ${io.exec_wb.bits}\n reg ${mdu_wb_reg}\n")
+        //printf(p"mdu->wb-bits: ${io.exec_wb.bits}\n reg ${mdu_wb_reg}\n")
     }
 }

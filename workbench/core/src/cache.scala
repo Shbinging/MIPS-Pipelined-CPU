@@ -66,10 +66,10 @@ class L1Cache extends Module{
             // }
             
             when(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
-                printf(p"goto 1\n")
+                //printf(p"goto 1\n")
                 state := 1.U    // cache hit
             } .otherwise{    // cache miss
-                printf(p"goto 2/3\n")
+                //printf(p"goto 2/3\n")
                 line_count := 0.U(conf.cache_line_width.W)
                 when(cache(index_fire).valid && cache(index_fire).dirty){ // write back 
                     state := 2.U
@@ -83,7 +83,7 @@ class L1Cache extends Module{
         // printf("state 1\n")
         io.in.resp.valid := true.B
         when(req_data.func===MX_RD){
-            printf(p"load ${index}-${offset}: ${req_data.addr}\n")
+            //printf(p"load ${index}-${offset}: ${req_data.addr}\n")
             io.in.resp.bits.data := Cat(
                 Cat(Mux(req_data.len==="b11".U, cache(index).data(offset+3.U), 0.U(8.W)),
                     Mux(req_data.len >="b10".U, cache(index).data(offset+2.U), 0.U(8.W))),
@@ -179,6 +179,6 @@ class L1Cache extends Module{
     }
     
     when(io.in.resp.fire()){
-        printf(p"response: ${io.in.resp.bits.data} for addr ${req_data.addr}\n")
+        //printf(p"response: ${io.in.resp.bits.data} for addr ${req_data.addr}\n")
     }
 }

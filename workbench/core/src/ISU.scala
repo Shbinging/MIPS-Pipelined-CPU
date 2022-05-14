@@ -18,6 +18,7 @@ class ISU extends Module {
         val isu_bru = Decoupled(new ISU_BRU)
         val isu_lsu = Decoupled(new ISU_LSU)
         val isu_mdu = Decoupled(new ISU_MDU)
+        val isu_pru = Decoupled(new ISU_PRU)
     })
     
     val reg_id_isu = RegEnable(next=io.id_isu.bits, enable=io.id_isu.fire())
@@ -26,8 +27,8 @@ class ISU extends Module {
     
     // XXX: OoO not allowed 
     val empty = Wire(Bool())
-    empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready)
-    io.id_isu.ready := !reg_id_isu_prepared || io.isu_alu.fire() || io.isu_bru.fire() || io.isu_lsu.fire() || io.isu_mdu.fire()
+    empty := (io.isu_alu.ready && io.isu_bru.ready && io.isu_lsu.ready && io.isu_mdu.ready && io.isu_pru.ready)
+    io.id_isu.ready := !reg_id_isu_prepared || io.isu_alu.fire() || io.isu_bru.fire() || io.isu_lsu.fire() || io.isu_mdu.fire() || io.isu_pru.fire()
     //printf("id_isu.ready %d\n", io.id_isu.ready)
     io.isu_alu <> DontCare
     io.isu_alu.valid := false.B
@@ -37,12 +38,14 @@ class ISU extends Module {
     io.isu_lsu.valid := false.B
     io.isu_mdu <> DontCare
     io.isu_mdu.valid := false.B
+    io.isu_pru <> DontCare
+    io.isu_pru.valid := false.B
 // * scoreboard
     io.out_gpr_read.rs_addr := reg_id_isu.read1
     io.out_gpr_read.rt_addr := reg_id_isu.read2
-    val dirtys = Mem(32, Bool())
+    val dirtys = Mem(64, Bool())
     when(reset.asBool() || io.flush){
-        for (i <- 0 to 31){
+        for (i <- 0 to 63){
             dirtys(i) := N
         }
     }
@@ -60,10 +63,10 @@ class ISU extends Module {
     val canLaunch = WireInit(N)
     val rsData, rtData = WireInit(0.U(32.W))
     when(io.id_isu.fire()){
-        printf("ok\n");
+        //printf("ok\n");
     }    
     when(rmDirty()){
-        printf("rm dirty %d\n", io.rb_isu.addr)
+        //printf("rm dirty %d\n", io.rb_isu.addr)
         dirtys(io.rb_isu.addr) := 0.U
     }
     when(rmDirtyByALU()){
@@ -77,14 +80,21 @@ class ISU extends Module {
         canLaunch := Y
         rsData := getData1(reg_id_isu.read1)
         rtData := getData2(reg_id_isu.read2)
-        printf("alu pass %x %x %x\n", io.alu_pass.ALU_out, io.rb_isu.data, io.gpr_data.rt_data)
-        printf(p"rt Data: ${rtData} @ ${io.out_gpr_read.rt_addr}\n")
+        //printf("alu pass %x %x %x\n", io.alu_pass.ALU_out, io.rb_isu.data, io.gpr_data.rt_data)
+        //printf(p"rt Data: ${rtData} @ ${io.out_gpr_read.rt_addr}\n")
     }.otherwise{
-        printf("%d %d %d %d %d\n",reg_id_isu_prepared, empty, isValid(reg_id_isu.read1) , isValid((reg_id_isu.read2)) ,isValid(reg_id_isu.write) )
-        printf("read1 %d\n", reg_id_isu.read1)
+       // printf("%d %d %d %d %d\n",reg_id_isu_prepared, empty, isValid(reg_id_isu.read1) , isValid((reg_id_isu.read2)) ,isValid(reg_id_isu.write) )
+        //printf("read1 %d\n", reg_id_isu.read1)
         canLaunch := N
     }    
     switch(reg_id_isu.exu){
+        is (PRU_ID){
+            io.isu_pru.valid := canLaunch
+            io.isu_pru.bits.current_pc := reg_id_isu.pcNext - 4.U
+            printf("@isu pru_op %d\n", reg_id_isu.op(3, 0))
+            io.isu_pru.bits.pru_op := reg_id_isu.op(3, 0)
+            io.isu_pru.bits.current_instr := reg_id_isu.current_instr
+        }
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)
             iaBundle := DontCare

@@ -46,6 +46,8 @@ class verilator_top extends Module {
     val mem_arbiter = Module(new Arbiter(new MemReq, 2))
     val mem = Module(new SimDev)
     val arbit_chosen = RegEnable(enable=mem.io.in.req.fire(), next=mem_arbiter.io.chosen)
+
+    val pru = Module(new PRU)
     mem.io.clock := clock 
     mem.io.reset := reset.asBool()
     mem_arbiter.io.in <> VecInit(icache.io.out.req, dcache.io.out.req)
@@ -60,6 +62,8 @@ class verilator_top extends Module {
     instr_fetch.io.flush := write_back.io.flush
     instr_decode.io.flush := write_back.io.flush 
     instr_shoot.io.flush := write_back.io.flush 
+    
+    pru.io.flush := write_back.io.flush
     bru.io.flush := write_back.io.flush
     mdu.io.flush := write_back.io.flush
     lsu.io.flush := write_back.io.flush
@@ -71,7 +75,7 @@ class verilator_top extends Module {
     icache.io.in <> instr_fetch.io.icache
     // imem.io.in <> icache.io.out
     when(icache.io.out.req.fire()){
-      printf(p"icache: ${icache.io.out.req.bits}\n")
+      //printf(p"icache: ${icache.io.out.req.bits}\n")
     }
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
@@ -82,7 +86,7 @@ class verilator_top extends Module {
     instr_shoot.io.gpr_data <> gprs.io.read_out
     instr_shoot.io.rb_isu <> write_back.io.gpr_wr
     instr_shoot.io.alu_pass <> alu.io.exec_pass
-    
+    instr_shoot.io.isu_pru <> pru.io.isu_pru
     alu.io.isu_alu <> instr_shoot.io.isu_alu
     
     bru.io.isu_bru <> instr_shoot.io.isu_bru
@@ -93,7 +97,7 @@ class verilator_top extends Module {
     dcache.io.in <> lsu.io.dcache
     // dmem.io.in <> dcache.io.out
     when(dcache.io.out.req.fire()){
-      printf(p"dcache: ${dcache.io.out.req.bits}\n")
+      //printf(p"dcache: ${dcache.io.out.req.bits}\n")
     }
 
     mdu.io.isu_mdu <> instr_shoot.io.isu_mdu
@@ -102,6 +106,11 @@ class verilator_top extends Module {
     write_back.io.bru_wb <> bru.io.exec_wb
     write_back.io.lsu_wb <> lsu.io.exec_wb
     write_back.io.mdu_wb <> mdu.io.exec_wb
+    write_back.io.pru_wb <> pru.io.exec_wb
+    
+    write_back.io.cp0_write_out <> gprs.io.cp0_write_in
+    write_back.io.cp0_status := gprs.io.cp0_status
+    write_back.io.cp0_cause := gprs.io.cp0_cause
 
     gprs.io.write_in <> write_back.io.gpr_wr
     //printf(p"write_back io gpr wr: ${write_back.io.gpr_wr}\n")

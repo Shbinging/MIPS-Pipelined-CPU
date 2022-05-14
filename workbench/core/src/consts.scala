@@ -62,6 +62,11 @@ trait CP0Consts {
   val EC_CpU  = 11.U(EC_WIDTH.W)  // * Coprocessor unusable
   val EC_Ov   = 12.U(EC_WIDTH.W)  // * Arithmetic overflow
   val EC_Tr   = 13.U(EC_WIDTH.W)  // * Trap
+
+  val cp0_status = 44.U(6.W)
+  val cp0_cause = 45.U(6.W)
+  val cp0_epc = 46.U(6.W)
+  val cp0_badvaddr = 40.U(6.W)
 }
 
 trait CacheConsts {
@@ -97,7 +102,7 @@ trait CacheConsts {
 }
 
 trait InstrConsts {
-  val REG_SZ    = 5;
+  val REG_SZ    = 6;
   val IMM_SZ    = 16;
   val SHAMT_SZ  = 5;
 }
@@ -114,11 +119,12 @@ trait DecodeSelectors {
 }
 
 trait ExecUnitIndices {
-  val EX_ID_WIDTH = 2
+  val EX_ID_WIDTH = 3
   val ALU_ID      = 0.U(EX_ID_WIDTH.W)
   val BRU_ID      = 1.U(EX_ID_WIDTH.W)
   val LSU_ID      = 2.U(EX_ID_WIDTH.W)
   val MDU_ID      = 3.U(EX_ID_WIDTH.W)
+  val PRU_ID      = 4.U(EX_ID_WIDTH.W)
 
   val OPCODE_WIDTH = 5
   val ALU_ADDU_OP = "b00000".U(OPCODE_WIDTH.W)
@@ -159,6 +165,7 @@ trait ExecUnitIndices {
   val BRU_JAL_OP= "b1001".U(OPCODE_WIDTH.W) 
   val BRU_JR_OP= "b1010".U(OPCODE_WIDTH.W) 
   val BRU_JALR_OP= "b1011".U(OPCODE_WIDTH.W) 
+  val BRU_ERET_OP = "b1100".U(OPCODE_WIDTH.W)
 
   val LSU_LW_OP    = "b0000".U(OPCODE_WIDTH.W)
   val LSU_LH_OP    = "b0001".U(OPCODE_WIDTH.W)
@@ -205,6 +212,11 @@ trait ExecUnitIndices {
   val MDU_MSUB_OP = "b1010".U(OPCODE_WIDTH.W)
   val MDU_MSUBU_OP = "b1011".U(OPCODE_WIDTH.W)
   val MDU_MUL_OP = "b1100".U(OPCODE_WIDTH.W)
+
+  //PRU
+  val PRU_SYSCALL_OP = 0.U(4.W)
+  val PRU_BREAK_OP = 1.U(4.W)
+  
 }
 
 trait InstrPattern {
@@ -284,6 +296,14 @@ trait InstrPattern {
   val MADDU = BitPat("b011100??????????0000000000000001")
   val MSUB  = BitPat("b011100??????????0000000000000100")
   val MSUBU = BitPat("b011100??????????0000000000000101")
+
+  val MFC0 = BitPat("b01000000000??????????00000000???")
+  val MTC0 = BitPat("b01000000100??????????00000000???")
+  val ERET = BitPat("b01000010000000000000000000011000")
+
+  val BREAK = BitPat("b00000000000000000000000000001101")
+  val SYSCALL = BitPat("b00000000000000000000000000001100")
+  
 }
 
 object consts extends InstrPattern
