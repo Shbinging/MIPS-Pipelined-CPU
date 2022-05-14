@@ -256,11 +256,30 @@ class MemResp extends Bundle {
   val data = Output(UInt(conf.xprlen.W))
 }
 
+class CacheReq extends Bundle{
+  val is_cached = Output(Bool())
+  val addr = Output(UInt(conf.xprlen.W))
+  val len = Output(UInt(ML_SZ.W))              // aligned
+  val strb = Output(UInt((conf.xprlen / 8).W)) // unaligned
+  val data  = Output(UInt(conf.xprlen.W))
+  val func  = Output(UInt(MX_SZ.W))
+  val exception = Output(UInt(ET_WIDTH.W))
+}
+
+class CacheResp extends Bundle{
+  val data = Output(UInt(conf.xprlen.W))
+  val exception = Output(UInt(ET_WIDTH.W))
+}
+
 class MemIO extends Bundle {
   val req = DecoupledIO(new MemReq)
   val resp = Flipped(DecoupledIO(new MemResp))
 }
 
+class CacheIO extends Bundle{
+  val req = DecoupledIO(new CacheReq)
+  val resp = Flipped(Decoupled(new CacheResp))
+}
 
 class SimDev extends BlackBox {
   val io = IO(new Bundle {

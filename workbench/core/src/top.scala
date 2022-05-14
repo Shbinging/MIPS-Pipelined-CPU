@@ -41,7 +41,11 @@ class verilator_top extends Module {
     i_tlb_translator.io.tlb <> tlb.io.entries
     i_tlb_translator.io.req <> instr_fetch.io.tlb_req
     instr_fetch.io.tlb_resp <> i_tlb_translator.io.resp
-    // TODO: i_tlb_translator.io.acid <> ?
+    i_tlb_translator.io.acid := gprs.io.cp0_entryhi.asid
+    
+    // TODO
+    d_tlb_translator.io.tlb <> tlb.io.entries
+    d_tlb_translator.io.req <> 
 
     val mem_arbiter = Module(new Arbiter(new MemReq, 2))
     val mem = Module(new SimDev)

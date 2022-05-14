@@ -13,7 +13,7 @@ class CacheLine extends Bundle{
 
 class L1Cache extends Module{
     val io = IO(new Bundle{
-        val in = Flipped(new MemIO)
+        val in = Flipped(new CacheIO)
         val out = new MemIO
     })
     val req_data = RegEnable(io.in.req.bits, io.in.req.fire())
@@ -50,7 +50,9 @@ class L1Cache extends Module{
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
         val tag_fire = io.in.req.bits.addr(conf.addr_width-1, conf.cache_line_width)
-        when(!io.in.req.cached){   // uncached,
+        when(io.in.req.exception =/= ET_None){
+            state := 5.U    // just return directly
+        }. elsewhen(!io.in.req.cached){   // uncached,
             state := 4.U
         } .otherwise{
             when(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
@@ -69,6 +71,7 @@ class L1Cache extends Module{
     }
     when(state===1.U){  // cache hit
         io.in.resp.valid := true.B
+        io.in.resp.bits.exception := req_data.exception
         when(req_data.func===MX_RD){
             io.in.resp.bits.data := Cat(
                 Cat(Mux(req_data.len==="b11".U, cache(index).data(offset+3.U), 0.U(8.W)),
@@ -142,9 +145,9 @@ class L1Cache extends Module{
     } .elsewhen(state===5.U){
         io.in.resp.valid := true.B
         io.in.resp.bits.data := resp_data
+        io.in.resp.bits.exception := req_data.exception
         when(io.in.resp.fire() && !io.in.req.fire()){
             state := 0.U
         }
-    }
-    
+    } 
 }
