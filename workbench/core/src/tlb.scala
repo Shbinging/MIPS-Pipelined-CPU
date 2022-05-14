@@ -31,9 +31,7 @@ class TLBTranslator extends Module{
         val resp = new TLBTranslatorOutput
     })
     // FIX Page Size 4096 kB
-    val found = Bool()
-    val entry = Wire(new EntryLo)
-    found := false.B
+
     io.resp.exception := ET_None
     
     // unmapped addr
@@ -46,29 +44,32 @@ class TLBTranslator extends Module{
             io.resp.pa := io.req.va - "h_8000_0000".U 
             io.resp.cached := true.B
         }
-    }
-
-    // mapped
-    io.resp.cached := true.B
-    for(i <- 0 to conf.tlb_size-1){
-        when(
-            (io.tlb(i).hi.vpn2 === (io.req.va>>12)) && (
-                (io.tlb(i).lo_0.global & io.tlb(i).lo_1.global) ||
-                (io.tlb(i).hi.asid === io.asid)
-            )
-        ){
-            entry := Mux(io.req.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
-            when(entry.valid === false.B){
-                io.resp.exception := ET_TLB_Inv
-            } .elsewhen(entry.dirty===false.B && io.req.ref_type===MX_WR){
-                io.resp.exception := ET_TLB_Mod
+    } .otherwise{
+        // mapped
+        val found = Bool()
+        val entry = Wire(new EntryLo)
+        found := false.B
+        io.resp.cached := true.B
+        for(i <- 0 to conf.tlb_size-1){
+            when(
+                (io.tlb(i).hi.vpn2 === (io.req.va>>12)) && (
+                    (io.tlb(i).lo_0.global & io.tlb(i).lo_1.global) ||
+                    (io.tlb(i).hi.asid === io.asid)
+                )
+            ){
+                entry := Mux(io.req.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
+                when(entry.valid === false.B){
+                    io.resp.exception := ET_TLB_Inv
+                } .elsewhen(entry.dirty===false.B && io.req.ref_type===MX_WR){
+                    io.resp.exception := ET_TLB_Mod
+                }
+                io.resp.pa := Cat(entry.pfn(31, 12), io.req.va(11, 0))
+                found := true.B
             }
-            io.resp.pa := Cat(entry.pfn(31, 12), io.req.va(11, 0))
-            found := true.B
         }
-    }
 
-    when(!found){
-        io.resp.exception := ET_TLB_Miss
+        when(!found){
+            io.resp.exception := ET_TLB_Miss
+        }
     }
 }

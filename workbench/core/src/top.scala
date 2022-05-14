@@ -68,15 +68,9 @@ class verilator_top extends Module {
     mdu.io.flush := write_back.io.flush
     lsu.io.flush := write_back.io.flush
     alu.io.flush := write_back.io.flush
-    // program_counter.io.in <> instr_fetch.io.pc_writer // ignore branches temporarily
-    // imem.io.clock := clock 
-    // imem.io.reset := reset.asBool()
+
     instr_fetch.io.wb_if <> write_back.io.wb_if
     icache.io.in <> instr_fetch.io.icache
-    // imem.io.in <> icache.io.out
-    when(icache.io.out.req.fire()){
-      //printf(p"icache: ${icache.io.out.req.bits}\n")
-    }
     
     instr_decode.io.if_id <> instr_fetch.io.if_id
 
@@ -91,14 +85,8 @@ class verilator_top extends Module {
     
     bru.io.isu_bru <> instr_shoot.io.isu_bru
     
-    // dmem.io.clock := clock 
-    // dmem.io.reset := reset.asBool()
     lsu.io.isu_lsu <> instr_shoot.io.isu_lsu
     dcache.io.in <> lsu.io.dcache
-    // dmem.io.in <> dcache.io.out
-    when(dcache.io.out.req.fire()){
-      //printf(p"dcache: ${dcache.io.out.req.bits}\n")
-    }
 
     mdu.io.isu_mdu <> instr_shoot.io.isu_mdu
 
@@ -113,7 +101,6 @@ class verilator_top extends Module {
     write_back.io.cp0_cause := gprs.io.cp0_cause
 
     gprs.io.write_in <> write_back.io.gpr_wr
-    //printf(p"write_back io gpr wr: ${write_back.io.gpr_wr}\n")
     io.commit <> DontCare
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)
@@ -121,8 +108,6 @@ class verilator_top extends Module {
     io.commit.pc := commit.commit_pc
     io.commit.valid := commit.commit
     io.commit.instr := commit.commit_instr
-
-    //printf(p"Commit! ${io.commit}\n")
 }
 
 
