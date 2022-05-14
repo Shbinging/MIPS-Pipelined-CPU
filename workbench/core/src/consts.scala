@@ -216,7 +216,7 @@ trait ExecUnitIndices {
   //PRU
   val PRU_SYSCALL_OP = 0.U(4.W)
   val PRU_BREAK_OP = 1.U(4.W)
-  
+  val PRU_EXCEPT_OP = 2.U(4.W) 
 }
 
 trait InstrPattern {

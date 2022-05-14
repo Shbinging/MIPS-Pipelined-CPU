@@ -121,7 +121,13 @@ class InstrDecode extends Module{
     io.id_isu.bits.write := decoded_instr(6)
     io.id_isu.bits.read1 := decoded_instr(7)
     io.id_isu.bits.read2 := decoded_instr(8)
+    io.id_isu.bits.except_info <> if_id_reg.except_info
     
+    when(if_id_reg.except_info.enable){
+        io.id_isu.bits.exu := PRU_ID
+        io.id_isu.bits.op := PRU_EXCEPT_OP
+    }
+
     when(io.id_isu.fire()){
         when(io.id_isu.bits.exu === PRU_ID){
             printf("@idu pru_op is %d\n", io.id_isu.bits.op)

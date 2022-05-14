@@ -21,6 +21,12 @@ class TLB extends Module{
     for(i <- 0 to conf.tlb_size-1){
         io.entries(i) := tlb(i)
     }
+    for(i <- 0 to conf.tlb_size-1){
+        when(reset.asBool()){
+            tlb(i).lo_0.valid := false.B 
+            tlb(i).lo_1.valid := false.B
+        }
+    }
 }
 
 class TLBTranslator extends Module{
@@ -28,11 +34,12 @@ class TLBTranslator extends Module{
         val tlb = Input(Vec(conf.tlb_size, new TLBEntry))
         val asid = Input(UInt(8.W))
         val req = new TLBTranslatorReq
-        val resp = new TLBTranslatorOutput
+        val resp = new TLBTranslatorResp
     })
     // FIX Page Size 4096 kB
 
     io.resp.exception := ET_None
+    io.resp.pa := 0.U
     
     // unmapped addr
     when(io.req.va >= "h_8000_0000".U && io.req.va < "h_c000_0000".U){ 
@@ -46,8 +53,8 @@ class TLBTranslator extends Module{
         }
     } .otherwise{
         // mapped
-        val found = Bool()
-        val entry = Wire(new EntryLo)
+        val found = Wire(Bool())
+        // val entry = Wire(new EntryLo)
         found := false.B
         io.resp.cached := true.B
         for(i <- 0 to conf.tlb_size-1){
@@ -57,16 +64,16 @@ class TLBTranslator extends Module{
                     (io.tlb(i).hi.asid === io.asid)
                 )
             ){
-                entry := Mux(io.req.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
+                val entry = Mux(io.req.va(13)===0.U, io.tlb(i).lo_0, io.tlb(i).lo_1)
                 when(entry.valid === false.B){
                     io.resp.exception := ET_TLB_Inv
                 } .elsewhen(entry.dirty===false.B && io.req.ref_type===MX_WR){
                     io.resp.exception := ET_TLB_Mod
                 }
-                io.resp.pa := Cat(entry.pfn(31, 12), io.req.va(11, 0))
+                io.resp.pa := Cat(entry.pfn(19, 0), io.req.va(11, 0))
                 found := true.B
             }
-        }
+        } 
 
         when(!found){
             io.resp.exception := ET_TLB_Miss

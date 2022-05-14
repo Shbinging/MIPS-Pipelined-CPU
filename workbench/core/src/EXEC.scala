@@ -254,7 +254,9 @@ class BRU extends Module{
 class LSU extends Module{
     val io = IO{new Bundle{
         val isu_lsu = Flipped(Decoupled(new ISU_LSU))
-        val dcache = new MemIO
+        val tlb_req = Flipped(new TLBTranslatorReq)
+        val tlb_resp = Flipped(new TLBTranslatorResp)
+        val dcache = new CacheIO
         val exec_wb = Decoupled(new LSU_WB)
         val flush = Input(Bool())
     }}
@@ -300,9 +302,11 @@ class LSU extends Module{
 		val en = Bool()
 		val w_data = UInt(conf.data_width.W)
 	})
+    val except_reg = Reg(new exceptionInfo)
 	// val dev = Module(new SimDev)
 	// dev.io.clock := clock
     // dev.io.reset := reset.asBool() 
+    io.tlb_req <> DontCare
     io.dcache.req.bits <> DontCare
     io.dcache.req.valid := false.B
     io.dcache.resp.ready := false.B
@@ -386,18 +390,34 @@ class LSU extends Module{
 			when(!read_reg.en){
 				state_reg := LSU_CALC
 			}.otherwise{
-				io.dcache.req.valid := true.B
-				io.dcache.req.bits.addr :=read_reg.addr & (~3.U(32.W))
+                // val tlb_req = Flipped(new TLBTranslatorReq)
+                // val tlb_resp = Flipped(new TLBTranslatorResp)
+                io.tlb_req.va := read_reg.addr & (~3.U(32.W))
+                io.tlb_req.ref_type := MX_RD
+                io.dcache.req.valid := true.B
+                io.dcache.req.bits.is_cached := io.tlb_resp.cached
+				io.dcache.req.bits.addr := io.tlb_resp.pa // read_reg.addr & (~3.U(32.W))
+                io.dcache.req.bits.exception := io.tlb_resp.exception
 				io.dcache.req.bits.func := MX_RD
 				io.dcache.req.bits.len := 3.U
 				io.dcache.resp.ready := true.B
                 printf("LOAD at %x\n", io.dcache.req.bits.addr)
 			}
 			when(io.dcache.resp.fire()){
-				state_reg := LSU_CALC
-				exec_reg.preReadData := io.dcache.resp.bits.data >> (read_reg.addr(1, 0) << 3)
-                exec_reg.preReadDataFull := io.dcache.resp.bits.data
-				io.dcache.req.valid := false.B
+                when(io.dcache.resp.bits.exception === ET_None){
+				    state_reg := LSU_CALC
+				    exec_reg.preReadData := io.dcache.resp.bits.data >> (read_reg.addr(1, 0) << 3)
+                    exec_reg.preReadDataFull := io.dcache.resp.bits.data
+                    except_reg.enable := false.B
+                } .otherwise{
+                    state_reg := LSU_BACK
+                    except_reg.enable := true.B 
+                    except_reg.EPC := r.current_pc
+                    except_reg.badVaddr := read_reg.addr & (~3.U(32.W))
+                    except_reg.exeCode := EC_TLBL   // FIXME: what it should be
+                    except_reg.excType := io.dcache.resp.bits.exception
+                }
+            	io.dcache.req.valid := false.B
 			}
             when(io.flush){
                 state_reg := LSU_DIE
@@ -444,10 +464,13 @@ class LSU extends Module{
 				    back_reg.w_data := write_reg.w_data
 				    state_reg := LSU_BACK
 			    }.otherwise{
+                    io.tlb_req.va := write_reg.addr & (~3.U(32.W))
+                    io.tlb_req.ref_type := MX_WR
+                    io.dcache.req.valid := true.B
+                    io.dcache.req.bits.is_cached := io.tlb_resp.cached
+		    		io.dcache.req.bits.addr := io.tlb_resp.pa 
+                    io.dcache.req.bits.exception := io.tlb_resp.exception
                     io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
-				    io.dcache.req.valid := true.B
-				    io.dcache.req.bits.addr := write_reg.addr & (~3.U(32.W))
-                //printf("%x\n", io.dcache.req.bits.addr)
 				    io.dcache.req.bits.func := MX_WR
 				    io.dcache.req.bits.strb := write_reg.strb
                 //printf("strb %x\n", write_reg.strb)
@@ -455,8 +478,18 @@ class LSU extends Module{
 				    back_reg.w_data := DontCare
 			    }
 			    when(io.dcache.resp.fire()){
-				    state_reg := LSU_BACK
-				    io.dcache.req.valid := false.B
+                    when(io.dcache.resp.bits.exception === ET_None){
+				        state_reg := LSU_BACK
+                        except_reg.enable := false.B
+                    } .otherwise{
+                        state_reg := LSU_BACK
+                        except_reg.enable := true.B 
+                        except_reg.EPC := r.current_pc
+                        except_reg.badVaddr := write_reg.addr & (~3.U(32.W))
+                        except_reg.exeCode := EC_TLBS   // FIXME: what it should be
+                        except_reg.excType := io.dcache.resp.bits.exception
+                    }
+                    io.dcache.req.valid := false.B
 			    }
             }
 		}
@@ -478,7 +511,7 @@ class LSU extends Module{
                     io.exec_wb.bits.error.badVaddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()
                     isLoadException := N
                 }.otherwise{
-                    io.exec_wb.bits.error.enable := N
+                    io.exec_wb.bits.error <> except_reg
                 }
                 //printf("@lsu back value is %x\n", io.exec_wb.bits.w_data)
 			    io.exec_wb.valid := isu_lsu_fire && !io.flush

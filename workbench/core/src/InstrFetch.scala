@@ -10,7 +10,7 @@ class InstrFetch extends Module{
         val wb_if = Flipped(Decoupled(new RB_IF))
         val tlb_req = Flipped(new TLBTranslatorReq)
         val tlb_resp = Flipped(new TLBTranslatorResp)
-        val icache = new MemIO
+        val icache = new CacheIO
         val flush = Input(Bool())
         val if_id = Decoupled(new IF_ID)
     })
@@ -46,7 +46,7 @@ class InstrFetch extends Module{
     io.icache.req.bits.func := MX_RD
     io.icache.req.bits.addr := io.tlb_resp.pa // pc_reg
     io.icache.req.bits.len := 3.U   // 00, 01, 10, 11
-    io.icache.req.bits.exceptoin := io.tlb_resp.exception
+    io.icache.req.bits.exception := io.tlb_resp.exception
     io.icache.req.valid := true.B && !io.flush
     
     io.icache.resp.ready := io.if_id.ready || !if_id_instr_prepared
@@ -70,7 +70,13 @@ class InstrFetch extends Module{
     io.if_id.valid := if_id_instr_prepared && !io.flush
     io.if_id.bits.instr := if_id_instr
     io.if_id.bits.pcNext :=  if_id_next_pc
-    io.if_id.bits.exception := exception
+    
+    io.if_id.bits.except_info.enable := exception =/= ET_None
+    io.if_id.bits.except_info.EPC := if_id_next_pc - 4.U 
+    io.if_id.bits.except_info.badVaddr := if_id_next_pc - 4.U 
+    io.if_id.bits.except_info.exeCode := EC_TLBL
+    io.if_id.bits.except_info.excType := exception
+    //io.if_id.bits.exception := exception
     
     when(io.if_id.fire()){
         printf("start executing: %x\n", request_pc - 4.U)

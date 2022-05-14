@@ -58,7 +58,7 @@ class IF_ID extends Bundle{
     // val if_commit = Output(Bool())
     val instr = Output(UInt(conf.data_width.W))
     val pcNext = Output(UInt(conf.addr_width.W))
-    val exception = Output(UInt())
+    val except_info = Output(new exceptionInfo)
 }
 
 // ID_RF, RF_ISU, ID_ISU
@@ -87,7 +87,7 @@ class ID_ISU extends Bundle{
     val pcNext = Output(UInt(conf.addr_width.W)) //currentpc + 4
     val current_instr = Output(UInt(conf.data_width.W))
 
-    val exception = Output(UInt(ET_WIDTH.W))
+    val except_info = Output(new exceptionInfo)
 }
 
 // ISU_ALU
@@ -101,8 +101,6 @@ class ISU_ALU extends Bundle{
 
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
-
-    val exception = Output(UInt(ET_WIDTH.W))
 }
 
 class ISU_BRU extends Bundle{
@@ -141,6 +139,7 @@ class ISU_MDU extends Bundle{
 
 class ISU_PRU extends Bundle{
     val pru_op = Output(UInt(4.W))
+    val except_info = Output(new exceptionInfo)
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
 }
@@ -237,7 +236,7 @@ class TLBTranslatorReq extends Bundle{
 
 class TLBTranslatorResp extends Bundle{
   val pa = Output(UInt(conf.addr_width.W))
-  val cached = Output(UInt(Bool()))
+  val cached = Output(Bool())
   val exception = Output(UInt(ET_WIDTH.W))
 }
 

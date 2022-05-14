@@ -50,9 +50,9 @@ class L1Cache extends Module{
     when(io.in.req.fire()){
         val index_fire = io.in.req.bits.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
         val tag_fire = io.in.req.bits.addr(conf.addr_width-1, conf.cache_line_width)
-        when(io.in.req.exception =/= ET_None){
+        when(io.in.req.bits.exception =/= ET_None){
             state := 5.U    // just return directly
-        }. elsewhen(!io.in.req.cached){   // uncached,
+        }. elsewhen(!io.in.req.bits.is_cached){   // uncached,
             state := 4.U
         } .otherwise{
             when(cache(index_fire).valid && cache(index_fire).tag===tag_fire){
