@@ -140,6 +140,7 @@ class ISU_MDU extends Bundle{
 class ISU_PRU extends Bundle{
     val pru_op = Output(UInt(4.W))
     val except_info = Output(new exceptionInfo)
+    val rs_data = Output(UInt(conf.data_width.W))
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
 }
@@ -279,6 +280,13 @@ class CacheIO extends Bundle{
   val req = DecoupledIO(new CacheReq)
   val resp = Flipped(Decoupled(new CacheResp))
 }
+
+class CacheCommandIO extends Bundle{
+  val en = Bool()
+  val addr = UInt(data_width.W)
+  val code = UInt(3.W)
+}
+
 
 class SimDev extends BlackBox {
   val io = IO(new Bundle {

@@ -110,6 +110,8 @@ class InstrDecode extends Module{
             ERET -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_ERET_OP, 0.U, 32.U + 14.U, 0.U),
             SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), //syscall 翻译成addi $0, $0, 0
             BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U),
+            CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U)
+            TLBP -> List// 
             )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

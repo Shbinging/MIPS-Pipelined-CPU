@@ -38,6 +38,15 @@ class PRU extends Module{
             }
             io.exec_wb.bits.needCommit := Y
         }
+        is(PRU_EXCEPT_OP){
+            io.exec_wb.bits.error <> r.except_info
+        }
+        is(PRU_CACHE_OP){
+            val address = r.rs_data + r.current_instr(15, 0).SInt()
+            val target_cache = r.current_instr(17, 16)
+            val operation = r.current_instr(20, 18)
+            // TODO： FUCK MIPS
+        }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
         isu_pru_prepared := N

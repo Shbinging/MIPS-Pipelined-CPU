@@ -95,6 +95,7 @@ class ISU extends Module {
             io.isu_pru.bits.pru_op := reg_id_isu.op(3, 0)
             io.isu_pru.bits.current_instr := reg_id_isu.current_instr
             io.isu_pru.bits.except_info <> reg_id_isu.except_info
+            io.isu_pru.bits.rs_data := rsData
         }
         is(ALU_ID){
             val iaBundle = Wire(new ISU_ALU)

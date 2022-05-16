@@ -13,14 +13,16 @@ class CacheLine extends Bundle{
 
 class L1Cache extends Module{
     val io = IO(new Bundle{
+        val cache_cmd = new CacheCommandIO
         val in = Flipped(new CacheIO)
         val out = new MemIO
     })
     val req_data = RegEnable(io.in.req.bits, io.in.req.fire())
     val resp_data = RegEnable(next=io.out.resp.bits.data, enable=io.out.resp.fire())
-    val state = RegInit(0.U(3.W))
+    val state = RegInit(0.U(32.W))
+    val cache_cmd = RegEnable(io.cache_cmd, io.cache_cmd.en)
 
-    io.in.req.ready := io.in.resp.fire() | (state===0.U)
+    io.in.req.ready := (io.in.resp.fire() || (state===0.U)) && (!cache_cmd.en)
 
     val cache = Mem(1<<conf.L1_index_width, new CacheLine)
 
@@ -30,6 +32,7 @@ class L1Cache extends Module{
             cache(i).valid := false.B 
             cache(i).dirty := false.B
         }
+        cache_cmd.en := false.B
     }
     val index = req_data.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
     val tag = req_data.addr(conf.addr_width-1, conf.cache_line_width)
@@ -66,6 +69,40 @@ class L1Cache extends Module{
                 } .otherwise{   // read 
                     state := 3.U
                 }
+            }
+        }
+    } .elsewhen(state===0.U && cache_cmd.en){
+        when(cache_cmd.code==="b000".U){
+            val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
+            when(cache(idx).dirty){
+                cache_cmd.addr := Cat(cache(idx).tag, 0.U(conf.cache_line_width.W))
+                state := 6.U
+            } .otherwise {
+                cache(idx).valid := false.B
+                cache_cmd.en := false.B
+            }
+        } .elsewhen(cache_cmd.code==="b010".U){
+
+            // TODO: state := 7.U
+        } .elsewhen(cache_cmd.code==="b100".U){
+            val tag = cache_cmd.addr(conf.addr_width-1, conf.cache_line_width)
+            val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
+            when(cache(idx).valid && cache(idx).tag===tag){
+                cache(idx).valid := false.B
+            }
+            cache_cmd.en := false.B 
+        } .elsewhen(cache_cmd.code==="b101".U){
+            val tag = cache_cmd.addr(conf.addr_width-1, conf.cache_line_width)
+            val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
+            when(cache(idx).valid && cache(idx).tag===tag){
+                when(cache(idx).dirty){
+                    state := 6.U
+                } .otherwise{
+                    cache(idx).valid := false.B 
+                    cache_cmd.en := false.B
+                }
+            } .otherwise{
+                cache_cmd.en := false.B
             }
         }
     }
@@ -149,5 +186,26 @@ class L1Cache extends Module{
         when(io.in.resp.fire() && !io.in.req.fire()){
             state := 0.U
         }
-    } 
+    } .elsewhen(state===6.U){
+        val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
+        io.out.req.bits.func := MX_WR
+        io.out.req.bits.addr := (cache(idx).tag.asUInt()<<conf.cache_line_width) + line_count
+        io.out.req.bits.len := 3.U 
+        io.out.req.bits.strb := "b1111".U
+        io.out.req.bits.data := Cat(
+            Cat(cache(idx).data(line_count+3.U), cache(idx).data(line_count+2.U)), 
+            Cat(cache(idx).data(line_count+1.U), cache(idx).data(line_count+0.U))
+        )
+        io.out.req.valid := true.B
+        io.out.resp.ready := true.B
+        when(io.out.req.fire()){
+            line_count := line_count + 4.U
+        }
+        when(io.out.resp.fire() && line_count===(conf.cache_line_size/8).U){
+            line_count := 0.U
+            state := 0.U
+            cache(idx).valid := false.B 
+            cache_cmd.en := false.B
+        }
+    }
 }
