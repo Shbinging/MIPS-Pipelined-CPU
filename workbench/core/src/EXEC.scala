@@ -10,6 +10,12 @@ class PRU extends Module{
         val isu_pru = Flipped(Decoupled(new ISU_PRU))
         val flush = Input(Bool())
         val exec_wb = Decoupled(new PRU_WB)  
+        val cp0_entryhi = Input(new EntryHi)
+        val cp0_status = Input(new cp0_Status_12)
+        val cp0_cause = Input(new cp0_Cause_13)
+        val cp0_badAddr = Input(new cp0_BadVaddr_8)
+        val cp0_epc = Input(new cp0_Epc_14)
+        //val 
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -18,24 +24,26 @@ class PRU extends Module{
     io.exec_wb.bits := DontCare
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
-    io.exec_wb.bits.error.enable := Y
+    io.exec_wb.bits.error.enable := N
     io.exec_wb.bits.needCommit := N
-    io.exec_wb.bits.error.EPC := r.current_pc
+    io.exec_wb.bits.eret.en := N
+    io.exec_wb.bits.mft.en := N
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
     switch(r.pru_op){
         is(PRU_SYSCALL_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_BREAK_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Bp
-            when(io.exec_wb.fire()){
-                printf("break commit = 1\n")
-            }
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_EXCEPT_OP){
@@ -46,6 +54,18 @@ class PRU extends Module{
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
             // TODO： FUCK MIPS
+        }
+        is(PRU_ERET_OP){
+            io.exec_wb.bits.eret.en := Y
+            io.exec_wb.bits.eret.w_pc_addr := io.cp0_epc.epc
+        }
+        is(PRU_MFC0_OP){
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := N
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            switch(r.rs_addr){
+                
+            }
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {

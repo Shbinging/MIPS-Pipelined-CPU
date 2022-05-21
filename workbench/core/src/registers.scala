@@ -114,7 +114,11 @@ class CP0 extends Module{
     val cause_sel_0 = RegInit(0.U(32.W))
     val status_sel_0 = RegInit(0.U(32.W))
     val epc_sel_0 = RegInit(0.U(32.W))
-
+    io.cp0_badAddr := baddAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)
+    io.cp0_cause := cause_sel_0.asTypeOf(new cp0_Cause_13)
+    io.cp0_epc := cause_sel_0.asTypeOf(new cp0_Epc_14)
+    io.cp0_status := status_sel_0.asTypeOf(new cp0_Status_12)
+    
     when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
         val newCause = WireInit(cause_sel_0.asTypeOf(new cp0_Cause_13))
         val newStatus = WireInit(status_sel_0.asTypeOf(new cp0_Status_12))

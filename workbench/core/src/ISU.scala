@@ -43,9 +43,9 @@ class ISU extends Module {
 // * scoreboard
     io.out_gpr_read.rs_addr := reg_id_isu.read1
     io.out_gpr_read.rt_addr := reg_id_isu.read2
-    val dirtys = Mem(64, Bool())
+    val dirtys = Mem(32, Bool())
     when(reset.asBool() || io.flush){
-        for (i <- 0 to 63){
+        for (i <- 0 to 31){
             dirtys(i) := N
         }
     }

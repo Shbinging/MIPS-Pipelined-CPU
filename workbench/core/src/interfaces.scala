@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import java.util.spi.ResourceBundleProvider
 
 // // PC
 // class PCInput extends Bundle{
@@ -157,12 +158,29 @@ class ISU_PRU extends Bundle{
     val pru_op = Output(UInt(4.W))
     val except_info = Output(new exceptionInfo)
     val rs_data = Output(UInt(conf.data_width.W))
+    val rs_addr = Output(UInt(6.W))
+    val rd_addr = Output(UInt(6.W))
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
 }
 
+class PRU_WB_ERET extends Bundle{
+    val en = Bool()
+    val w_pc_addr = UInt()
+}
+
+class PRU_WB_MFT extends Bundle{
+    val en = Bool()
+    val destSel = Bool() //0 general 1 cp0
+    val destAddr = UInt(5.W)
+    val destCP0Sel = UInt(3.W) //XXX:not use right now
+    val data = UInt(32.W)
+}
+
 class PRU_WB extends Bundle{
     val error = Output(new exceptionInfo)
+    val eret = Output(new PRU_WB_ERET)
+    val mft = Output(new PRU_WB_MFT)
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
     val needCommit = Output(Bool())
