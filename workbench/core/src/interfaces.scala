@@ -52,6 +52,16 @@ class CP0WriteInput extends {
     val data = Input(UInt(32.W))
 }
 
+class CP0WriteInputWB extends Bundle{
+    val enableEXL = Input(Bool())
+    val enableOther = Input(Bool())
+    val enableVaddress = Input(Bool())
+    val BD = Input(UInt(1.W))
+    val EXL = Input(UInt(1.W))
+    val ExcCode = Input(UInt(5.W))
+    val epc = Input(UInt(32.W))
+    val vAddr = Input(UInt(32.W))
+}
 // WB_IF 
 class RB_IF extends Bundle{
   val pc_w_en = Output(Bool())
@@ -289,7 +299,7 @@ class CacheIO extends Bundle{
 
 class CacheCommandIO extends Bundle{
   val en = Bool()
-  val addr = UInt(data_width.W)
+  val addr = UInt(conf.data_width.W)
   val code = UInt(3.W)
 }
 
@@ -370,7 +380,7 @@ class cp0_Cause_13 extends Bundle{
 }
 
 class cp0_BadVaddr_8 extends Bundle{
-    val badAddr = UInt(32.W)
+    val badAddr = UInt(conf.data_width.W)
 }
 
 class cp0_Config_16 extends Bundle{

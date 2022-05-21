@@ -93,7 +93,7 @@ class GPR extends Module {
     //printf("GPR[8] t0 = %x\n", regs(8).asUInt())
 }
 
-class CP0 extends {
+class CP0 extends Module{
     val io = IO(new Bundle{
         val cp0_entryhi = Output(new EntryHi)
         val cp0_status = Output(new cp0_Status_12)
@@ -107,7 +107,7 @@ class CP0 extends {
 
     })
     val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
-    val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random.sel_0.en)
+    val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
      
     // ect.
 }

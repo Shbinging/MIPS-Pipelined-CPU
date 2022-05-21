@@ -17,7 +17,9 @@ class verilator_top extends Module {
     })
 
     val gprs = Module(new GPR)
-   
+    
+    val cp0 = Module(new CP0)
+
     val instr_fetch = Module(new InstrFetch)
     val icache = Module(new L1Cache)
     
@@ -41,13 +43,13 @@ class verilator_top extends Module {
     i_tlb_translator.io.tlb <> tlb.io.entries
     i_tlb_translator.io.req <> instr_fetch.io.tlb_req
     instr_fetch.io.tlb_resp <> i_tlb_translator.io.resp
-    i_tlb_translator.io.asid := gprs.io.cp0_entryhi.asid
+    i_tlb_translator.io.asid := cp0.io.cp0_entryhi.asid
     
     // TODO
     d_tlb_translator.io.tlb <> tlb.io.entries
     d_tlb_translator.io.req <> lsu.io.tlb_req
     lsu.io.tlb_resp <> d_tlb_translator.io.resp
-    d_tlb_translator.io.asid := gprs.io.cp0_entryhi.asid
+    d_tlb_translator.io.asid := cp0.io.cp0_entryhi.asid
 
     val mem_arbiter = Module(new Arbiter(new MemReq, 2))
     val mem = Module(new SimDev)
@@ -102,9 +104,9 @@ class verilator_top extends Module {
     write_back.io.mdu_wb <> mdu.io.exec_wb
     write_back.io.pru_wb <> pru.io.exec_wb
     
-    write_back.io.cp0_write_out <> gprs.io.cp0_write_in
-    write_back.io.cp0_status := gprs.io.cp0_status
-    write_back.io.cp0_cause := gprs.io.cp0_cause
+    write_back.io.cp0_write_out <> cp0.io.cp0_write_in
+    write_back.io.cp0_status := cp0.io.cp0_status
+    write_back.io.cp0_cause := cp0.io.cp0_cause
 
     gprs.io.write_in <> write_back.io.gpr_wr
     io.commit <> DontCare
