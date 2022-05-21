@@ -379,8 +379,13 @@ class cp0_Cause_13 extends Bundle{
     val Empty1 = UInt(2.W)
 }
 
+
 class cp0_BadVaddr_8 extends Bundle{
     val badAddr = UInt(conf.data_width.W)
+}
+
+class cp0_Epc_14 extends Bundle{
+    val epc = UInt(conf.data_width.W)
 }
 
 class cp0_Config_16 extends Bundle{

@@ -99,15 +99,39 @@ class CP0 extends Module{
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
         val cp0_badAddr = Output(new cp0_BadVaddr_8)
-        
+        val cp0_epc = Output(new cp0_Epc_14)
+
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
+       
         val cp0_write_in = new CP0WriteInputWB
     })
     val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
     val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
+    val baddAddr_sel_0 = RegInit(0.U(32.W))
+    val cause_sel_0 = RegInit(0.U(32.W))
+    val status_sel_0 = RegInit(0.U(32.W))
+    val epc_sel_0 = RegInit(0.U(32.W))
 
-    // ect.
+    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
+        val newCause = WireInit(cause_sel_0.asTypeOf(new cp0_Cause_13))
+        val newStatus = WireInit(status_sel_0.asTypeOf(new cp0_Status_12))
+        when(io.cp0_write_in.enableEXL){
+            newStatus.EXL := io.cp0_write_in.EXL
+        }
+        when(io.cp0_write_in.enableVaddress){
+            baddAddr_sel_0 := io.cp0_write_in.vAddr
+        }
+        when(io.cp0_write_in.enableOther){
+            newCause.ExcCode := io.cp0_write_in.ExcCode
+            newCause.BD := io.cp0_write_in.BD
+            status_sel_0 := newStatus.asUInt()
+            cause_sel_0 := newCause.asUInt()
+            epc_sel_0 := io.cp0_write_in.epc
+            printf("status %x\n", newStatus.asUInt())
+            printf("cause %x\n", newCause.asUInt())
+        }        
+    }
 }
