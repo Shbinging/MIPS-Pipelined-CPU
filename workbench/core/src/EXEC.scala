@@ -11,11 +11,13 @@ class PRU extends Module{
         val flush = Input(Bool())
         val exec_wb = Decoupled(new PRU_WB)
 
-        val tag_lo = new UInt(data_width.W)
-        val tag_hi = new UInt(data_width.W)
+        val cp0_taglo = new UInt(data_width.W)
+        val cp0_taghi = new UInt(data_width.W)
         val icache_cmd = new CacheCommandIO
         val dcache_cmd = new CacheCommandIO
-
+        
+        val cp0_entryhi = Input(new EntryHi)
+        val cp0_entrylo = Input(new EntryLo)
         val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
     })
     val isu_pru_prepared = RegInit(N)
@@ -75,7 +77,9 @@ class PRU extends Module{
         }
         is(PRU_TLBP_OP){
             val index = WireInit(f"h_8000_0000".U(data_width.W))
-
+            for(i <- 0 to 31){
+                when(tlb_entries(i).hi.vpn2 === (cp0_entryhi))
+            }
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
