@@ -253,6 +253,9 @@ class WriteBack extends Module{
         io.commit.commit := true.B
         printf("mdu wb %x\n", io.commit.commit_pc);
     }.elsewhen(pru_wb_fire){
+        io.commit.commit_pc := reg_pru_wb.current_pc
+        io.commit.commit_instr := reg_pru_wb.current_instr
+        io.commit.commit := Y
         when(reg_pru_wb.mft.en){
             when(reg_pru_wb.mft.destSel){//cp0
                 switch(reg_pru_wb.mft.destAddr){

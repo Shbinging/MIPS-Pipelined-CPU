@@ -89,12 +89,15 @@ class ISU extends Module {
     }    
     switch(reg_id_isu.exu){
         is (PRU_ID){
-            io.isu_pru.valid := canLaunch
+            io.isu_pru.valid := canLaunch && reg_id_isu_prepared
             io.isu_pru.bits.current_pc := reg_id_isu.pcNext - 4.U
             printf("@isu pru_op %d\n", reg_id_isu.op(3, 0))
             io.isu_pru.bits.pru_op := reg_id_isu.op(3, 0)
             io.isu_pru.bits.current_instr := reg_id_isu.current_instr
             io.isu_pru.bits.except_info <> reg_id_isu.except_info
+            io.isu_pru.bits.rd_addr := reg_id_isu.write
+            io.isu_pru.bits.rs_addr := reg_id_isu.read1
+            io.isu_pru.bits.rt_addr := reg_id_isu.read2
             io.isu_pru.bits.rs_data := rsData
         }
         is(ALU_ID){
@@ -106,7 +109,7 @@ class ISU extends Module {
             iaBundle.rd_addr := reg_id_isu.rd_addr
             iaBundle.current_instr := reg_id_isu.current_instr
             iaBundle.current_pc := reg_id_isu.pcNext-4.U
-            io.isu_alu.valid := canLaunch
+            io.isu_alu.valid := canLaunch && reg_id_isu_prepared
             io.isu_alu.bits.alu_op := reg_id_isu.op
             switch(reg_id_isu.imm_rt_sel){
                 is(false.B){//imm
@@ -133,11 +136,11 @@ class ISU extends Module {
             bruBundle.pcNext := reg_id_isu.pcNext
             bruBundle.current_instr := reg_id_isu.current_instr
             bruBundle.current_pc := reg_id_isu.pcNext - 4.U
-            io.isu_bru.valid := canLaunch
+            io.isu_bru.valid := canLaunch && reg_id_isu_prepared
             io.isu_bru.bits <> bruBundle
         }
         is(LSU_ID){
-            io.isu_lsu.valid := canLaunch
+            io.isu_lsu.valid := canLaunch && reg_id_isu_prepared
             io.isu_lsu.bits.imm := reg_id_isu.imm
             io.isu_lsu.bits.rsData := rsData
             io.isu_lsu.bits.rtData := rtData
@@ -148,7 +151,7 @@ class ISU extends Module {
             io.isu_lsu.bits.current_pc := reg_id_isu.pcNext - 4.U
         }
         is(MDU_ID){
-            io.isu_mdu.valid := canLaunch
+            io.isu_mdu.valid := canLaunch && reg_id_isu_prepared
             io.isu_mdu.bits.mdu_op := reg_id_isu.op
             io.isu_mdu.bits.rsData := rsData
             io.isu_mdu.bits.rtData := rtData
@@ -159,10 +162,10 @@ class ISU extends Module {
         }
     }
 
-    when(io.flush || (!io.id_isu.fire() && (io.isu_alu.fire() || io.isu_bru.fire() || io.isu_mdu.fire() || io.isu_lsu.fire()))){
+    when(io.flush || (!io.id_isu.fire() && (io.isu_alu.fire() || io.isu_bru.fire() || io.isu_mdu.fire() || io.isu_lsu.fire() || io.isu_pru.fire()))){
         reg_id_isu_prepared := false.B
     } .elsewhen(!io.flush && io.id_isu.fire()){
         reg_id_isu_prepared := true.B
     }
-
+    //printf("@isu reg_id_isu_prepared %d\n", reg_id_isu_prepared)
 }

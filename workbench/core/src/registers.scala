@@ -144,7 +144,7 @@ class CP0 extends Module{
     io.cp0_random := random_sel_0
     io.cp0_badAddr := badAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)
     io.cp0_cause := cause_sel_0.asTypeOf(new cp0_Cause_13)
-    io.cp0_epc := cause_sel_0.asTypeOf(new cp0_Epc_14)
+    io.cp0_epc := epc_sel_0.asTypeOf(new cp0_Epc_14)
     io.cp0_status := status_sel_0.asTypeOf(new cp0_Status_12)
     io.cp0_context := context_sel_0.asTypeOf(new cp0_Context_4)
     io.cp0_entryhi := entry_hi_sel_0.asTypeOf(new EntryHi)
@@ -177,6 +177,7 @@ class CP0 extends Module{
             epc_sel_0 := io.cp0_write_in.epc
             printf("status %x\n", newStatus.asUInt())
             printf("cause %x\n", newCause.asUInt())
+            printf("epc %x\n", io.cp0_write_in.epc)
         }        
     }
 }
