@@ -26,10 +26,10 @@ class GPR extends Module {
         val write_in = new GPRWriteInput
         val read_out = new GPRReadOutput
         val gpr_commit = Output(Vec(32, UInt(32.W)))
-        val cp0_write_in = new CP0WriteInput
-        val cp0_entryhi = Output(new EntryHi)
-        val cp0_status = Output(new cp0_Status_12)
-        val cp0_cause = Output(new cp0_Cause_13)
+        // val cp0_write_in = new CP0WriteInput
+        // val cp0_entryhi = Output(new EntryHi)
+        // val cp0_status = Output(new cp0_Status_12)
+        // val cp0_cause = Output(new cp0_Cause_13)
     })
     // TODO: support variable lengths configs
 
@@ -59,40 +59,55 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := regs(i).asUInt()
     }
-    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
-        val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
-        val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
-        when(io.cp0_write_in.enableEXL){
-            newStatus.EXL := io.cp0_write_in.EXL
-        }
-        when(io.cp0_write_in.enableVaddress){
-            regs(32.U + 8.U)(0) := io.cp0_write_in.vAddr(7, 0)
-            regs(32.U + 8.U)(1) := io.cp0_write_in.vAddr(15, 8)
-            regs(32.U + 8.U)(2) := io.cp0_write_in.vAddr(23, 16)
-            regs(32.U + 8.U)(3) := io.cp0_write_in.vAddr(31, 24)
-        }
-        when(io.cp0_write_in.enableOther){
-            newCause.ExcCode := io.cp0_write_in.ExcCode
-            newCause.BD := io.cp0_write_in.BD
-            regs(32.U + 12.U)(0) := newStatus.asUInt()(7, 0)
-            regs(32.U + 12.U)(1) := newStatus.asUInt()(15, 8)
-            regs(32.U + 12.U)(2) := newStatus.asUInt()(23, 16)
-            regs(32.U + 12.U)(3) := newStatus.asUInt()(31, 24)
-            regs(32.U + 13.U)(0) := newCause.asUInt()(7, 0)
-            regs(32.U + 13.U)(1) := newCause.asUInt()(15, 8)
-            regs(32.U + 13.U)(2) := newCause.asUInt()(23, 16)
-            regs(32.U + 13.U)(3) := newCause.asUInt()(31, 24)
-            regs(32.U + 14.U)(0) := io.cp0_write_in.epc(7, 0)
-            regs(32.U + 14.U)(1) := io.cp0_write_in.epc(15, 8)
-            regs(32.U + 14.U)(2) := io.cp0_write_in.epc(23, 16)
-            regs(32.U + 14.U)(3) := io.cp0_write_in.epc(31, 24)
-            printf("status %x\n", newStatus.asUInt())
-            printf("cause %x\n", newCause.asUInt())
-        }        
-    }
-    io.cp0_status := regs(32.U + 12.U).asTypeOf(new cp0_Status_12)
-    io.cp0_cause := regs(cp0_cause).asTypeOf(new cp0_Cause_13)
-    io.cp0_entryhi := regs(32.U + 10.U).asTypeOf(new EntryHi)
+    // when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
+    //     val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
+    //     val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
+    //     when(io.cp0_write_in.enableEXL){
+    //         newStatus.EXL := io.cp0_write_in.EXL
+    //     }
+    //     when(io.cp0_write_in.enableVaddress){
+    //         regs(32.U + 8.U)(0) := io.cp0_write_in.vAddr(7, 0)
+    //         regs(32.U + 8.U)(1) := io.cp0_write_in.vAddr(15, 8)
+    //         regs(32.U + 8.U)(2) := io.cp0_write_in.vAddr(23, 16)
+    //         regs(32.U + 8.U)(3) := io.cp0_write_in.vAddr(31, 24)
+    //     }
+    //     when(io.cp0_write_in.enableOther){
+    //         newCause.ExcCode := io.cp0_write_in.ExcCode
+    //         newCause.BD := io.cp0_write_in.BD
+    //         regs(32.U + 12.U)(0) := newStatus.asUInt()(7, 0)
+    //         regs(32.U + 12.U)(1) := newStatus.asUInt()(15, 8)
+    //         regs(32.U + 12.U)(2) := newStatus.asUInt()(23, 16)
+    //         regs(32.U + 12.U)(3) := newStatus.asUInt()(31, 24)
+    //         regs(32.U + 13.U)(0) := newCause.asUInt()(7, 0)
+    //         regs(32.U + 13.U)(1) := newCause.asUInt()(15, 8)
+    //         regs(32.U + 13.U)(2) := newCause.asUInt()(23, 16)
+    //         regs(32.U + 13.U)(3) := newCause.asUInt()(31, 24)
+    //         regs(32.U + 14.U)(0) := io.cp0_write_in.epc(7, 0)
+    //         regs(32.U + 14.U)(1) := io.cp0_write_in.epc(15, 8)
+    //         regs(32.U + 14.U)(2) := io.cp0_write_in.epc(23, 16)
+    //         regs(32.U + 14.U)(3) := io.cp0_write_in.epc(31, 24)
+    //         printf("status %x\n", newStatus.asUInt())
+    //         printf("cause %x\n", newCause.asUInt())
+    //     }        
+    // }
+    // io.cp0_status := regs(32.U + 12.U).asTypeOf(new cp0_Status_12)
+    // io.cp0_cause := regs(cp0_cause).asTypeOf(new cp0_Cause_13)
+    // io.cp0_entryhi := regs(32.U + 10.U).asTypeOf(new EntryHi)
     //printf("GPR[8] t0 = %x\n", regs(8).asUInt())
 }
 
+class CP0 extends {
+    val io = IO(new Bundle{
+        val cp0_entryhi = Output(new EntryHi)
+        val cp0_status = Output(new cp0_Status_12)
+        val cp0_cause = Output(new cp0_Cause_13)
+
+        val in_index_sel_0 = new CP0WriteInput
+        val in_random_sel_0 = new CP0WriteInput
+        val in_entrylo0_sel_0 = new CP0WriteInput
+        val in_entrylo1_sel_0 = new CP0WriteInput
+    })
+    val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
+    val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random.sel_0.en)
+    // ect.
+}

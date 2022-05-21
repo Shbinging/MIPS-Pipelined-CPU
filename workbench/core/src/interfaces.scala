@@ -35,17 +35,23 @@ class GPRWriteInput extends Bundle{
 }
 //CP0
 
+// FIXME
+// class CP0WriteInput extends Bundle{
+//     val enableEXL = Input(Bool())
+//     val enableOther = Input(Bool())
+//     val enableVaddress = Input(Bool())
+//     val BD = Input(UInt(1.W))
+//     val EXL = Input(UInt(1.W))
+//     val ExcCode = Input(UInt(5.W))
+//     val epc = Input(UInt(32.W))
+//     val vAddr = Input(UInt(32.W))
+// }
 
-class CP0WriteInput extends Bundle{
-    val enableEXL = Input(Bool())
-    val enableOther = Input(Bool())
-    val enableVaddress = Input(Bool())
-    val BD = Input(UInt(1.W))
-    val EXL = Input(UInt(1.W))
-    val ExcCode = Input(UInt(5.W))
-    val epc = Input(UInt(32.W))
-    val vAddr = Input(UInt(32.W))
+class CP0WriteInput extends {
+    val en = Input(Bool())
+    val data = Input(UInt(data_width.W))
 }
+
 // WB_IF 
 class RB_IF extends Bundle{
   val pc_w_en = Output(Bool())
