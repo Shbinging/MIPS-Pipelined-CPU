@@ -123,18 +123,21 @@ class CP0 extends Module{
     val status_sel_0 = RegInit(0.U(32.W))
     val epc_sel_0 = RegInit(0.U(32.W))
     val context_sel_0 = RegInit(0.U(32.W))
-    
+    val entry_hi_sel_0 = RegInit(0.U(32.W))
+
     io.cp0_badAddr := badAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)
     io.cp0_cause := cause_sel_0.asTypeOf(new cp0_Cause_13)
     io.cp0_epc := cause_sel_0.asTypeOf(new cp0_Epc_14)
     io.cp0_status := status_sel_0.asTypeOf(new cp0_Status_12)
     io.cp0_context := context_sel_0.asTypeOf(new cp0_Context_4)
+    io.cp0_entryhi := entry_hi_sel_0.asTypeOf(new EntryHi)
 
     when(io.in_cause_sel_0.en){cause_sel_0 := io.in_cause_sel_0.data}
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
     when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}
     when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
     when (io.in_context_sel_0.en){context_sel_0 := io.in_context_sel_0.data}
+    when(io.in_entryhi_sel_0.en){entry_hi_sel_0 := io.in_entryhi_sel_0.data}
 
     when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
         val newCause = WireInit(cause_sel_0.asTypeOf(new cp0_Cause_13))
