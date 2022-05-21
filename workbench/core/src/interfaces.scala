@@ -420,3 +420,9 @@ class cp0_Config_16 extends Bundle{
     val Impl = UInt(15.W)
     val M = UInt(1.W)
 }
+
+class cp0_Context_4 extends Bundle{
+    val PTEBase = UInt(9.W)
+    val BadVPN2 = UInt(19.W)
+    val Empty1 = UInt(4.W)
+}

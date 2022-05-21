@@ -18,18 +18,26 @@ class WriteBack extends Module{
         val gpr_wr = Flipped(new GPRWriteInput)
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
+        val cp0_context = Input(new cp0_Context_4)
+        val cp0_entry_hi = Input(new EntryHi)
+
         val cp0_write_out = Flipped(new CP0WriteInputWB)
         
+
         val out_cause_sel_0 = Flipped(new CP0WriteInput)
         val out_status_sel_0 = Flipped(new CP0WriteInput)
         val out_epc_sel_0 = Flipped(new CP0WriteInput)
         val out_badAddr_sel_0 = Flipped(new CP0WriteInput)
+        val out_context_sel_0 = Flipped(new CP0WriteInput)
+        val out_entry_hi_sel_0 = Flipped(new CP0WriteInput)
     })
     val time = RegInit(0.U(32.W))
 
     io.out_cause_sel_0.en := N
     io.out_epc_sel_0.en := N
     io.out_status_sel_0 := N
+    io.out_badAddr_sel_0.en := N
+    io.out_context_sel_0.en := N
     io.alu_wb.ready := true.B
     io.bru_wb.ready := true.B
     io.lsu_wb.ready := true.B
@@ -128,6 +136,23 @@ class WriteBack extends Module{
             io.cp0_write_out.enableVaddress := Y
             io.cp0_write_out.vAddr := exception.badVaddr
         }
+        when(VecInit(ET_TLB_Inv, ET_TLB_Miss, ET_TLB_Mod, ET_TLB_REFILL).contains(exception.excType)){
+            io.out_badAddr_sel_0.en := Y
+            io.out_badAddr_sel_0.data := exception.badVaddr
+
+            io.out_context_sel_0.en := Y
+            val context = WireInit(io.cp0_context)
+            context.BadVPN2 := exception.badVaddr >> 13
+            io.out_context_sel_0.data := context.asUInt()
+
+            io.out_entry_hi_sel_0.en := Y
+            val entry_hi = WireInit(io.cp0_entry_hi)
+            entry_hi.vpn2 := exception.badVaddr >> 13
+            io.out_entry_hi_sel_0.data := entry_hi
+            //entry_hi.asid := excep
+        }
+
+
         io.cp0_write_out.ExcCode := exception.exeCode
         printf("@wb excCode %x vecOff %x\n", exception.exeCode, vecOff)
         io.cp0_write_out.EXL := 1.U
