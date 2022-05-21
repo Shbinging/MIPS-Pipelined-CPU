@@ -111,10 +111,10 @@ class InstrDecode extends Module{
             ERET -> List(DontCare, RS_SEL, DontCare, DontCare, PRU_ID, PRU_ERET_OP, 0.U, 0.U, 0.U), 
             SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), 
             BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U), 
-            CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U) // FIXME
-            TLBP -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBP_OP, 0.U, 0.U, 0.U)
-            TLBR -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBR_OP, 0.U, 0.U, 0.U)
-            TLBWI-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWI_OP, 0.U, 0.U, 0.U)
+            CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U), // FIXME
+            TLBP -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBP_OP, 0.U, 0.U, 0.U),
+            TLBR -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBR_OP, 0.U, 0.U, 0.U),
+            TLBWI-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWI_OP, 0.U, 0.U, 0.U),
             TLBWR-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWR_OP, 0.U, 0.U, 0.U)
             )
     )

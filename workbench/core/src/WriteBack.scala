@@ -74,14 +74,14 @@ class WriteBack extends Module{
     io.cp0_write_out.enableOther := N
     io.cp0_write_out.enableEXL := N
     io.out_index_sel_0.en := N
-    out_cause_sel_0 := N
-    out_status_sel_0 := N
-    out_epc_sel_0 := N
-    out_badAddr_sel_0 := N
-    out_context_sel_0 := N
-    out_entryhi_sel_0 := N
-    out_entrylo0_sel_0 := N
-    out_entrylo1_sel_0 := N
+    io.out_cause_sel_0 := N
+    io.out_status_sel_0 := N
+    io.out_epc_sel_0 := N
+    io.out_badAddr_sel_0 := N
+    io.out_context_sel_0 := N
+    io.out_entryhi_sel_0 := N
+    io.out_entrylo0_sel_0 := N
+    io.out_entrylo1_sel_0 := N
     io.commit := DontCare
     io.commit.commit := N
     
@@ -264,15 +264,15 @@ class WriteBack extends Module{
                 io.gpr_wr.addr := reg_pru_wb.mft.destAddr
             }
         } .elsewhen(reg_pru_wb.tlbp.en){
-            io.cp0_index.en := Y 
-            io.cp0_index.data := reg_pru_wb.tlbp.index_data 
+            io.out_index_sel_0.en := Y 
+            io.out_index_sel_0.data := reg_pru_wb.tlbp.index_data 
         } .elsewhen(reg_pru_wb.tlbr.en){
-            io.cp0_entryhi.en := Y 
-            io.cp0_entryhi.data := reg_pru_wb.tlbr.entryhi.asUInt
-            io.cp0_entrylo_0.en := Y 
-            io.cp0_entrylo_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt
-            io.cp0_entrylo_1.en := Y 
-            io.cp0_entrylo_1.data := reg_pru_wb.tlbr.entrylo_1.asUInt
+            io.out_entryhi_sel_0.en := Y 
+            io.out_entryhi_sel_0.data := reg_pru_wb.tlbr.entryhi.asUInt
+            io.out_entrylo0_sel_0.en := Y 
+            io.out_entrylo0_sel_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt
+            io.out_entrylo1_sel_0.en := Y 
+            io.out_entrylo1_sel_0.data := reg_pru_wb.tlbr.entrylo_1.asUInt
         }
     }
     }

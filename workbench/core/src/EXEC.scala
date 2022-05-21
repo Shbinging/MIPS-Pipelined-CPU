@@ -11,18 +11,17 @@ class PRU extends Module{
         val flush = Input(Bool())
         val exec_wb = Decoupled(new PRU_WB)
 
-        val cp0_taglo = new UInt(data_width.W)
-        val cp0_taghi = new UInt(data_width.W)
+        val cp0_taglo = Input(UInt(conf.data_width.W))
+        val cp0_taghi = Input(UInt(conf.data_width.W))
         val icache_cmd = new CacheCommandIO
         val dcache_cmd = new CacheCommandIO
         
-        val cp0_index = Input(new UInt(conf.data_width.W))
-        val cp0_random = Input(new UInt(conf.data_width.W))
+        val cp0_index = Input(UInt(conf.data_width.W))
+        val cp0_random = Input(UInt(conf.data_width.W))
         val cp0_entryhi = Input(new EntryHi)
         val cp0_entrylo_0 = Input(new EntryLo)
         val cp0_entrylo_1 = Input(new EntryLo)
         val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
-        val exec_wb = Decoupled(new PRU_WB)  
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_badAddr = Input(new cp0_BadVaddr_8)
@@ -46,7 +45,7 @@ class PRU extends Module{
     io.exec_wb.bits.eret.en := N
     io.exec_wb.bits.mft.en := N
     io.exec_wb.bits.tlbp.en := N
-    io.exec_wb.tlbr.en := N
+    io.exec_wb.bits.tlbr.en := N
 
     io.tlb_wr.en := false.B
     when(io.exec_wb.fire()){
@@ -71,7 +70,7 @@ class PRU extends Module{
             io.exec_wb.bits.error <> r.except_info
         }
         is(PRU_CACHE_OP){
-            //val address = r.rs_data + r.current_instr(15, 0).asSInt()
+            val address = (r.rs_data.asSInt() + r.current_instr(15, 0).asSInt()).asUInt()(31, 0)
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
             when(operation === "b010".U){
@@ -93,23 +92,24 @@ class PRU extends Module{
             }
         }
         is(PRU_TLBP_OP){
-            val index = WireInit(f"h_8000_0000".U(data_width.W))
-            for(i <- 0 to 31){
-                when((io.tlb_entries(i).hi.vpn2 === io.cp0_entryhi.vpn2) &&
-                    ((io.tlb_entries(i).lo_0.global & io.tlb_entries(i).lo_1.global) ||
-                     (io.tlb_entries(i).hi.asid === io.cp0_entryhi.asid)
+            val index = WireInit(f"h_8000_0000".U(32.W))
+            for(i <- 0 to conf.tlb_size-1){
+                when((io.tlb_entries(i).hi.vpn2 === io.cp0_entryhi.vpn2) && (
+                        (io.tlb_entries(i).lo_0.global & io.tlb_entries(i).lo_1.global) ||
+                        (io.tlb_entries(i).hi.asid === io.cp0_entryhi.asid)
                     )
-                )
-                index := i.U(data_width.W)
+                ){
+                    index := i.U(32.W)
+                }
             }
-            io.exec_wb.tlbp.en := true.B 
-            io.exec_wb_tlbp.index_data := index            
+            io.exec_wb.bits.tlbp.en := true.B 
+            io.exec_wb.bits.tlbp.index_data := index            
         }
         is(PRU_TLBR_OP){
-            io.exec_wb.tlbr.en := true.B
-            io.exec_wb.tlbr.entry_hi := io.tlb_entries(io.cp0_index).hi 
-            io.exec_wb.tlbr.entrylo_0 := io.tlb_entries(io.cp0_index).entrylo_0
-            io.exec_wb.tlbr.entrylo_1 := io.tlb_entries(io.cp0_index).entrylo_1 
+            io.exec_wb.bits.tlbr.en := true.B
+            io.exec_wb.bits.tlbr.entryhi := io.tlb_entries(io.cp0_index).hi 
+            io.exec_wb.bits.tlbr.entrylo_0 := io.tlb_entries(io.cp0_index).lo_0
+            io.exec_wb.bits.tlbr.entrylo_1 := io.tlb_entries(io.cp0_index).lo_1
         }
         is(PRU_TLBWI_OP){
             io.tlb_wr.en := true.B 
