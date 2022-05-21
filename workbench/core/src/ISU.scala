@@ -72,8 +72,8 @@ class ISU extends Module {
     when(rmDirtyByALU()){
         dirtys(io.alu_pass.w_addr) := 0.U
     }
-    when(!io.flush && reg_id_isu_prepared && empty && isReadValid(reg_id_isu.read1) && isReadValid((reg_id_isu.read2)) && isValid(reg_id_isu.write)){
-        when(reg_id_isu.write =/= 0.U){
+    when(!io.flush && reg_id_isu_prepared && empty && (isReadValid(reg_id_isu.read1) || reg_id_isu.isRead1CP0) && (isReadValid((reg_id_isu.read2)) || reg_id_isu.isRead2CP0) && (isValid(reg_id_isu.write) || reg_id_isu.isWriteCP0)){
+        when(reg_id_isu.write =/= 0.U && !reg_id_isu.isWriteCP0){
             dirtys(reg_id_isu.write) := Y
         }
         printf("launch %x\n", reg_id_isu.pcNext - 4.U)

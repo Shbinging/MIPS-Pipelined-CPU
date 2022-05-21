@@ -56,16 +56,33 @@ class PRU extends Module{
             // TODO： FUCK MIPS
         }
         is(PRU_ERET_OP){
+            io.exec_wb.bits.needCommit := Y
             io.exec_wb.bits.eret.en := Y
             io.exec_wb.bits.eret.w_pc_addr := io.cp0_epc.epc
         }
         is(PRU_MFC0_OP){
+            io.exec_wb.bits.needCommit := Y
             io.exec_wb.bits.mft.en := Y
             io.exec_wb.bits.mft.destSel := N
             io.exec_wb.bits.mft.destAddr := r.rd_addr
-            switch(r.rs_addr){
-                
-            }
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            //XXX:sel = 0
+            io.exec_wb.bits.mft.data := MuxLookup(r.rs_addr, 0.U, Array(
+                index_cp0_badvaddr -> io.cp0_badAddr.asUInt(),
+                index_cp0_cause -> io.cp0_cause.asUInt(),
+                index_cp0_epc -> io.cp0_epc.asUInt(),
+                index_cp0_status -> io.cp0_status.asUInt()
+            ))
+        }
+        is(PRU_MTC0_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := Y
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            io.exec_wb.bits.mft.data := r.rs_data
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {

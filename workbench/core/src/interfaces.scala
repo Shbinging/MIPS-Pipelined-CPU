@@ -48,7 +48,7 @@ class GPRWriteInput extends Bundle{
 //     val vAddr = Input(UInt(32.W))
 // }
 
-class CP0WriteInput extends {
+class CP0WriteInput extends Bundle{
     val en = Input(Bool())
     val data = Input(UInt(32.W))
 }
@@ -86,6 +86,9 @@ class ID_ISU extends Bundle{
     val read1 = Output(UInt(REG_SZ.W))
     val read2 = Output(UInt(REG_SZ.W))
     val write = Output(UInt(REG_SZ.W))
+    val isRead1CP0 = Output(Bool())
+    val isRead2CP0 = Output(Bool())
+    val isWriteCP0 = Output(Bool())
     
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
@@ -158,8 +161,9 @@ class ISU_PRU extends Bundle{
     val pru_op = Output(UInt(4.W))
     val except_info = Output(new exceptionInfo)
     val rs_data = Output(UInt(conf.data_width.W))
-    val rs_addr = Output(UInt(6.W))
-    val rd_addr = Output(UInt(6.W))
+    val rs_addr = Output(UInt(5.W))
+    val rt_addr = Output(UInt(5.W))
+    val rd_addr = Output(UInt(5.W))
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
 }
@@ -173,7 +177,7 @@ class PRU_WB_MFT extends Bundle{
     val en = Bool()
     val destSel = Bool() //0 general 1 cp0
     val destAddr = UInt(5.W)
-    val destCP0Sel = UInt(3.W) //XXX:not use right now
+    val CP0Sel = UInt(3.W) //XXX:not use right now
     val data = UInt(32.W)
 }
 
