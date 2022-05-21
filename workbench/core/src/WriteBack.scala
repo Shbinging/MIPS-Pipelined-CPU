@@ -19,17 +19,19 @@ class WriteBack extends Module{
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_context = Input(new cp0_Context_4)
-        val cp0_entry_hi = Input(new EntryHi)
+        val cp0_entryhi = Input(new EntryHi)
 
         val cp0_write_out = Flipped(new CP0WriteInputWB)
         
-
+        val out_index_sel_0 = Flipped(new CP0WriteInput)
         val out_cause_sel_0 = Flipped(new CP0WriteInput)
         val out_status_sel_0 = Flipped(new CP0WriteInput)
         val out_epc_sel_0 = Flipped(new CP0WriteInput)
         val out_badAddr_sel_0 = Flipped(new CP0WriteInput)
         val out_context_sel_0 = Flipped(new CP0WriteInput)
-        val out_entry_hi_sel_0 = Flipped(new CP0WriteInput)
+        val out_entryhi_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo0_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo1_sel_0 = Flipped(new CP0WriteInput)
     })
     val time = RegInit(0.U(32.W))
 
@@ -71,6 +73,15 @@ class WriteBack extends Module{
     val isException = WireInit((alu_wb_fire && reg_alu_wb.error.enable) || (lsu_wb_fire && reg_lsu_wb.error.enable) || (mdu_wb_fire && reg_mdu_wb.error.enable) || (pru_wb_fire && reg_pru_wb.error.enable))
     io.cp0_write_out.enableOther := N
     io.cp0_write_out.enableEXL := N
+    io.out_index_sel_0.en := N
+    out_cause_sel_0 := N
+    out_status_sel_0 := N
+    out_epc_sel_0 := N
+    out_badAddr_sel_0 := N
+    out_context_sel_0 := N
+    out_entryhi_sel_0 := N
+    out_entrylo0_sel_0 := N
+    out_entrylo1_sel_0 := N
     io.commit := DontCare
     io.commit.commit := N
     
@@ -145,11 +156,11 @@ class WriteBack extends Module{
             context.BadVPN2 := exception.badVaddr >> 13
             io.out_context_sel_0.data := context.asUInt()
 
-            io.out_entry_hi_sel_0.en := Y
-            val entry_hi = WireInit(io.cp0_entry_hi)
-            entry_hi.vpn2 := exception.badVaddr >> 13
-            io.out_entry_hi_sel_0.data := entry_hi
-            //entry_hi.asid := excep
+            io.out_entryhi_sel_0.en := Y
+            val entryhi = WireInit(io.cp0_entryhi)
+            entryhi.vpn2 := exception.badVaddr >> 13
+            io.out_entryhi_sel_0.data := entryhi
+            //entryhi.asid := excep
         }
 
 
@@ -252,6 +263,16 @@ class WriteBack extends Module{
                 io.gpr_wr.data := reg_pru_wb.mft.data
                 io.gpr_wr.addr := reg_pru_wb.mft.destAddr
             }
+        } .elsewhen(reg_pru_wb.tlbp.en){
+            io.cp0_index.en := Y 
+            io.cp0_index.data := reg_pru_wb.tlbp.index_data 
+        } .elsewhen(reg_pru_wb.tlbr.en){
+            io.cp0_entryhi.en := Y 
+            io.cp0_entryhi.data := reg_pru_wb.tlbr.entryhi.asUInt
+            io.cp0_entrylo_0.en := Y 
+            io.cp0_entrylo_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt
+            io.cp0_entrylo_1.en := Y 
+            io.cp0_entrylo_1.data := reg_pru_wb.tlbr.entrylo_1.asUInt
         }
     }
     }
