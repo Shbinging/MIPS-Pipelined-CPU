@@ -107,8 +107,21 @@ class verilator_top extends Module {
     write_back.io.cp0_write_out <> cp0.io.cp0_write_in
     write_back.io.cp0_status := cp0.io.cp0_status
     write_back.io.cp0_cause := cp0.io.cp0_cause
-
+    write_back.io.cp0_context := cp0.io.cp0_context
+    write_back.io.cp0_entry_hi := cp0.io.cp0_entryhi
+    write_back.io.cp0_status := cp0.io.cp0_status
+    
     gprs.io.write_in <> write_back.io.gpr_wr
+
+    pru.io.cp0_badAddr := cp0.io.cp0_badAddr
+    pru.io.cp0_cause := cp0.io.cp0_cause
+    pru.io.cp0_entryhi := cp0.io.cp0_entryhi
+    pru.io.cp0_epc := cp0.io.cp0_epc
+    pru.io.cp0_status := cp0.io.cp0_status
+
+    cp0.io.in_badAddr_sel_0 <> write_back.io.out_badAddr_sel_0
+    cp0.io.in_cause_sel_0 <> write_back.io.out_cause_sel_0
+
     io.commit <> DontCare
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)

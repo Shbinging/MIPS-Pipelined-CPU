@@ -9,6 +9,7 @@ class PRU extends Module{
     val io = IO(new Bundle{
         val isu_pru = Flipped(Decoupled(new ISU_PRU))
         val flush = Input(Bool())
+<<<<<<< HEAD
         val exec_wb = Decoupled(new PRU_WB)
 
         val cp0_taglo = new UInt(data_width.W)
@@ -19,6 +20,15 @@ class PRU extends Module{
         val cp0_entryhi = Input(new EntryHi)
         val cp0_entrylo = Input(new EntryLo)
         val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
+=======
+        val exec_wb = Decoupled(new PRU_WB)  
+        val cp0_entryhi = Input(new EntryHi)
+        val cp0_status = Input(new cp0_Status_12)
+        val cp0_cause = Input(new cp0_Cause_13)
+        val cp0_badAddr = Input(new cp0_BadVaddr_8)
+        val cp0_epc = Input(new cp0_Epc_14)
+        //val 
+>>>>>>> origin/tlbexception
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -27,27 +37,33 @@ class PRU extends Module{
     io.exec_wb.bits := DontCare
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
-    io.exec_wb.bits.error.enable := Y
+    io.exec_wb.bits.error.enable := N
     io.exec_wb.bits.needCommit := N
+<<<<<<< HEAD
     io.exec_wb.bits.error.EPC := r.current_pc
 
     io.icache_cmd.en := false.B
     io.dcache_cmd.en := false.B
+=======
+    io.exec_wb.bits.eret.en := N
+    io.exec_wb.bits.mft.en := N
+>>>>>>> origin/tlbexception
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
     switch(r.pru_op){
         is(PRU_SYSCALL_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_BREAK_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Bp
-            when(io.exec_wb.fire()){
-                printf("break commit = 1\n")
-            }
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_EXCEPT_OP){
@@ -80,6 +96,35 @@ class PRU extends Module{
             for(i <- 0 to 31){
                 when(tlb_entries(i).hi.vpn2 === (cp0_entryhi))
             }
+        }
+        is(PRU_ERET_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.eret.en := Y
+            io.exec_wb.bits.eret.w_pc_addr := io.cp0_epc.epc
+        }
+        is(PRU_MFC0_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := N
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            //XXX:sel = 0
+            io.exec_wb.bits.mft.data := MuxLookup(r.rs_addr, 0.U, Array(
+                index_cp0_badvaddr -> io.cp0_badAddr.asUInt(),
+                index_cp0_cause -> io.cp0_cause.asUInt(),
+                index_cp0_epc -> io.cp0_epc.asUInt(),
+                index_cp0_status -> io.cp0_status.asUInt()
+            ))
+        }
+        is(PRU_MTC0_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := Y
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            io.exec_wb.bits.mft.data := r.rs_data
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {

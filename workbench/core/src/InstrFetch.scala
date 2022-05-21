@@ -68,7 +68,8 @@ class InstrFetch extends Module{
         }
     }
     io.if_id.valid := if_id_instr_prepared && !io.flush
-    io.if_id.bits.instr := if_id_instr
+    io.if_id.bits.instr := Mux(exception === ET_None, if_id_instr, 0.U)
+    
     io.if_id.bits.pcNext :=  if_id_next_pc
     
     io.if_id.bits.except_info.enable := exception =/= ET_None
