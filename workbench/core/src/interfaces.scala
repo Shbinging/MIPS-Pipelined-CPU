@@ -181,10 +181,24 @@ class PRU_WB_MFT extends Bundle{
     val data = UInt(32.W)
 }
 
+class PRU_WB_TLBP extends Bundle{
+    val en = Bool()
+    val index_data = UInt(conf.data_width.W)
+}
+
+class PRU_WB_TLBR extends Bundle{
+  val en = Bool()
+  val entryhi = new EntryHi
+  val entrylo_0 = new EntryLo
+  val entrylo_1 = new EntryLo
+}
+
+
 class PRU_WB extends Bundle{
     val error = Output(new exceptionInfo)
     val eret = Output(new PRU_WB_ERET)
     val mft = Output(new PRU_WB_MFT)
+    val tlbp = Output(new PRU_WB_TLBR)
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
     val needCommit = Output(Bool())
@@ -264,8 +278,12 @@ class MultiplierIO extends Bundle {
   val data_dout = Input(UInt(66.W))
 }
 
-class WrTLB extends Bundle{
-  
+class TLBEntryIO extends Bundle{
+    val en = Output(Bool())
+    val index = Output(UInt(32.W))
+    val hi = Output(new EntryHi)
+    val lo_0 = Output(new EntryLo)
+    val lo_1 = Output(new EntryLo)
 }
 
 class TLBTranslatorReq extends Bundle{
@@ -320,15 +338,9 @@ class CacheIO extends Bundle{
 }
 
 class CacheCommandIO extends Bundle{
-<<<<<<< HEAD
-  val en = Output(Bool())
-  val addr = Output(UInt(data_width.W))
-  val code = Output(UInt(3.W))
-=======
   val en = Bool()
   val addr = UInt(conf.data_width.W)
   val code = UInt(3.W)
->>>>>>> 8af5aa0786fefb8414e2ac579376705d898e8a04
 }
 
 

@@ -16,15 +16,19 @@ class PRU extends Module{
         val icache_cmd = new CacheCommandIO
         val dcache_cmd = new CacheCommandIO
         
+        val cp0_index = Input(new UInt(conf.data_width.W))
+        val cp0_random = Input(new UInt(conf.data_width.W))
         val cp0_entryhi = Input(new EntryHi)
-        val cp0_entrylo = Input(new EntryLo)
+        val cp0_entrylo_0 = Input(new EntryLo)
+        val cp0_entrylo_1 = Input(new EntryLo)
         val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
         val exec_wb = Decoupled(new PRU_WB)  
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_badAddr = Input(new cp0_BadVaddr_8)
         val cp0_epc = Input(new cp0_Epc_14)
-        //val 
+
+        val tlb_wr = new TLBEntryIO
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -41,6 +45,10 @@ class PRU extends Module{
     io.dcache_cmd.en := false.B
     io.exec_wb.bits.eret.en := N
     io.exec_wb.bits.mft.en := N
+    io.exec_wb.bits.tlbp.en := N
+    io.exec_wb.tlbr.en := N
+
+    io.tlb_wr.en := false.B
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
@@ -94,7 +102,28 @@ class PRU extends Module{
                 )
                 index := i.U(data_width.W)
             }
-            
+            io.exec_wb.tlbp.en := true.B 
+            io.exec_wb_tlbp.index_data := index            
+        }
+        is(PRU_TLBR_OP){
+            io.exec_wb.tlbr.en := true.B
+            io.exec_wb.tlbr.entry_hi := io.tlb_entries(io.cp0_index).hi 
+            io.exec_wb.tlbr.entrylo_0 := io.tlb_entries(io.cp0_index).entrylo_0
+            io.exec_wb.tlbr.entrylo_1 := io.tlb_entries(io.cp0_index).entrylo_1 
+        }
+        is(PRU_TLBWI_OP){
+            io.tlb_wr.en := true.B 
+            io.tlb_wr.index := io.cp0_index
+            io.tlb_wr.hi := io.cp0_entryhi
+            io.tlb_wr.lo_0 := io.cp0_entrylo_0
+            io.tlb_wr.lo_1 := io.cp0_entrylo_1
+        }
+        is(PRU_TLBWR_OP){
+            io.tlb_wr.en := true.B 
+            io.tlb_wr.index := io.cp0_random
+            io.tlb_wr.hi := io.cp0_entryhi
+            io.tlb_wr.lo_0 := io.cp0_entrylo_0
+            io.tlb_wr.lo_1 := io.cp0_entrylo_1
         }
         is(PRU_ERET_OP){
             io.exec_wb.bits.needCommit := Y

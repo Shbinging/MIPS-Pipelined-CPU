@@ -13,7 +13,7 @@ class TLBEntry extends Bundle{
 
 class TLB extends Module{
     val io = IO(new Bundle{
-        val in = new WrTLB
+        val in = Flipped(new TLBEntryIO)
         val entries = Output(Vec(conf.tlb_size, new TLBEntry))
     })
 
@@ -26,6 +26,11 @@ class TLB extends Module{
             tlb(i).lo_0.valid := false.B 
             tlb(i).lo_1.valid := false.B
         }
+    }
+    when(io.in.en){
+        tlb(io.in.index).hi := io.in.hi 
+        tlb(io.in.index).lo_0 := io.in.lo_0 
+        tlb(io.in.index).lo_1 := io.in.lo_1
     }
 }
 
