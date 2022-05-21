@@ -15,6 +15,8 @@ class PRU extends Module{
         val tag_hi = new UInt(data_width.W)
         val icache_cmd = new CacheCommandIO
         val dcache_cmd = new CacheCommandIO
+
+        val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -53,7 +55,6 @@ class PRU extends Module{
             //val address = r.rs_data + r.current_instr(15, 0).asSInt()
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
-            // TODO： FUCK MIPS
             when(operation === "b010".U){
                 // assume it is only used for setup
                 printf(p"reset cache: tag lo${tag_lo}, tag hi${tag_hi}")
@@ -71,6 +72,10 @@ class PRU extends Module{
             } .otherwise{
                 printf("Unexpected Cache!\n")
             }
+        }
+        is(PRU_TLBP_OP){
+            val index = WireInit(f"h_8000_0000".U(data_width.W))
+
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
