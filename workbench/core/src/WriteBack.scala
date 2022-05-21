@@ -18,7 +18,7 @@ class WriteBack extends Module{
         val gpr_wr = Flipped(new GPRWriteInput)
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
-        val cp0_write_out = Flipped(new CP0WriteInput)
+        val cp0_write_out = Flipped(new CP0WriteInputWB)
     })
     val time = RegInit(0.U(32.W))
 

@@ -111,7 +111,7 @@ class InstrDecode extends Module{
             SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), // FIXME syscall 翻译成addi $0, $0, 0
             BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U), // FIXME
             CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U) // FIXME
-            TLBP -> List// 
+            //TLBP -> List// 
             )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

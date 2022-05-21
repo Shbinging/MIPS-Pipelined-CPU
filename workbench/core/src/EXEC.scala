@@ -50,7 +50,7 @@ class PRU extends Module{
             io.exec_wb.bits.error <> r.except_info
         }
         is(PRU_CACHE_OP){
-            val address = r.rs_data + r.current_instr(15, 0).SInt()
+            //val address = r.rs_data + r.current_instr(15, 0).asSInt()
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
             // TODO： FUCK MIPS
