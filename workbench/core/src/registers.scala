@@ -104,10 +104,10 @@ class CP0 extends Module{
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
-
+        val cp0_write_in = new CP0WriteInputWB
     })
     val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
     val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
-     
+
     // ect.
 }
