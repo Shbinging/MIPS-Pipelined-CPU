@@ -13,7 +13,7 @@ class CacheLine extends Bundle{
 
 class L1Cache extends Module{
     val io = IO(new Bundle{
-        val cache_cmd = new CacheCommandIO
+        val cache_cmd = Flipped(new CacheCommandIO)
         val in = Flipped(new CacheIO)
         val out = new MemIO
     })
@@ -81,9 +81,12 @@ class L1Cache extends Module{
                 cache(idx).valid := false.B
                 cache_cmd.en := false.B
             }
-        } .elsewhen(cache_cmd.code==="b010".U){
-
-            // TODO: state := 7.U
+        } .elsewhen(cache_cmd.code==="b010".U){ // reset
+            for(i <- 0 to (1<<conf.cache_line_width)-1){
+                cache(i).valid := false.B 
+                cache(i).dirty := false.B
+            }
+            cache_cmd.en := false.B
         } .elsewhen(cache_cmd.code==="b100".U){
             val tag = cache_cmd.addr(conf.addr_width-1, conf.cache_line_width)
             val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
@@ -104,6 +107,8 @@ class L1Cache extends Module{
             } .otherwise{
                 cache_cmd.en := false.B
             }
+        } .otherwise{
+            printf("Unexpected Cache Command!\n")
         }
     }
     when(state===1.U){  // cache hit

@@ -9,7 +9,12 @@ class PRU extends Module{
     val io = IO(new Bundle{
         val isu_pru = Flipped(Decoupled(new ISU_PRU))
         val flush = Input(Bool())
-        val exec_wb = Decoupled(new PRU_WB)  
+        val exec_wb = Decoupled(new PRU_WB)
+
+        val tag_lo = new UInt(data_width.W)
+        val tag_hi = new UInt(data_width.W)
+        val icache_cmd = new CacheCommandIO
+        val dcache_cmd = new CacheCommandIO
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -21,6 +26,9 @@ class PRU extends Module{
     io.exec_wb.bits.error.enable := Y
     io.exec_wb.bits.needCommit := N
     io.exec_wb.bits.error.EPC := r.current_pc
+
+    io.icache_cmd.en := false.B
+    io.dcache_cmd.en := false.B
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
@@ -46,6 +54,23 @@ class PRU extends Module{
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
             // TODO： FUCK MIPS
+            when(operation === "b010".U){
+                // assume it is only used for setup
+                printf(p"reset cache: tag lo${tag_lo}, tag hi${tag_hi}")
+            }
+            when(target_cache === "b00".U){         // ICache
+                io.icache_cmd := true.B
+                io.icache_cmd.addr := address 
+                io.icache_cmd.code := operation
+            } .elsewhen(target_cache === "b01".U){  // DCache
+                io.dcache_cmd := true.B
+                io.dcache_cmd.addr := address 
+                io.dcache_cmd.code := operation
+            } .elsewhen(target_cache === "b11".U){  // L2 Cache
+                printf("L2 Cache Command, ignore it.\n")
+            } .otherwise{
+                printf("Unexpected Cache!\n")
+            }
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {

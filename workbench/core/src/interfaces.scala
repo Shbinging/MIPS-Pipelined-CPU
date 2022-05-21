@@ -288,9 +288,9 @@ class CacheIO extends Bundle{
 }
 
 class CacheCommandIO extends Bundle{
-  val en = Bool()
-  val addr = UInt(data_width.W)
-  val code = UInt(3.W)
+  val en = Output(Bool())
+  val addr = Output(UInt(data_width.W))
+  val code = Output(UInt(3.W))
 }
 
 

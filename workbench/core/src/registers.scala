@@ -101,13 +101,21 @@ class CP0 extends {
         val cp0_entryhi = Output(new EntryHi)
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
+        val cp0_taglo = Output(new UInt(32.W))
+        val cp0_taghi = Output(new UInt(32.W))
 
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
+
+        val in_taglo_sel_0 = new CP0WriteInput
+        val in_taghi_sel_0 = new CP0WriteInput
     })
     val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
-    val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random.sel_0.en)
+    val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
+
+    val taglo_sel_0 = RegEnable(io.in_taglo_sel_0.data, io.in_taglo_sel_0.en)
+    val taghi_sel_0 = RegEnable(io.in_taghi_sel_0.data, io.in_taghi_sel_0.en)
     // ect.
 }
