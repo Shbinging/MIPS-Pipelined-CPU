@@ -9,7 +9,6 @@ class PRU extends Module{
     val io = IO(new Bundle{
         val isu_pru = Flipped(Decoupled(new ISU_PRU))
         val flush = Input(Bool())
-<<<<<<< HEAD
         val exec_wb = Decoupled(new PRU_WB)
 
         val cp0_taglo = new UInt(data_width.W)
@@ -20,15 +19,12 @@ class PRU extends Module{
         val cp0_entryhi = Input(new EntryHi)
         val cp0_entrylo = Input(new EntryLo)
         val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
-=======
         val exec_wb = Decoupled(new PRU_WB)  
-        val cp0_entryhi = Input(new EntryHi)
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_badAddr = Input(new cp0_BadVaddr_8)
         val cp0_epc = Input(new cp0_Epc_14)
         //val 
->>>>>>> origin/tlbexception
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
@@ -39,15 +35,12 @@ class PRU extends Module{
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.bits.error.enable := N
     io.exec_wb.bits.needCommit := N
-<<<<<<< HEAD
     io.exec_wb.bits.error.EPC := r.current_pc
 
     io.icache_cmd.en := false.B
     io.dcache_cmd.en := false.B
-=======
     io.exec_wb.bits.eret.en := N
     io.exec_wb.bits.mft.en := N
->>>>>>> origin/tlbexception
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
@@ -75,7 +68,7 @@ class PRU extends Module{
             val operation = r.current_instr(20, 18)
             when(operation === "b010".U){
                 // assume it is only used for setup
-                printf(p"reset cache: tag lo${tag_lo}, tag hi${tag_hi}")
+                printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
             }
             when(target_cache === "b00".U){         // ICache
                 io.icache_cmd := true.B
@@ -94,8 +87,14 @@ class PRU extends Module{
         is(PRU_TLBP_OP){
             val index = WireInit(f"h_8000_0000".U(data_width.W))
             for(i <- 0 to 31){
-                when(tlb_entries(i).hi.vpn2 === (cp0_entryhi))
+                when((io.tlb_entries(i).hi.vpn2 === io.cp0_entryhi.vpn2) &&
+                    ((io.tlb_entries(i).lo_0.global & io.tlb_entries(i).lo_1.global) ||
+                     (io.tlb_entries(i).hi.asid === io.cp0_entryhi.asid)
+                    )
+                )
+                index := i.U(data_width.W)
             }
+            
         }
         is(PRU_ERET_OP){
             io.exec_wb.bits.needCommit := Y
