@@ -27,7 +27,7 @@ class InstrDecode extends Module{
     io.id_isu.bits.pcNext := if_id_reg.pcNext
     io.id_isu.bits.current_instr := if_id_reg.instr
     // rd_addr, shamt_rs_sel, imm_rt_sel, sign_ext, exu, op 
-    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, RS_SEL, RT_SEL, ZERO_EXT_SEL, ALU_ID, ALU_ADD_OP, 0.U, 0.U, 0.U, N, N, N),
+    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, RS_SEL, RT_SEL, ZERO_EXT_SEL, ALU_ID, ALU_ADD_OP, 0.U, 0.U, 0.U),
         Array(
             LUI  -> List(rt, RS_SEL, IMM_SEL, DontCare, ALU_ID, ALU_LUI_OP, rt, rs, 0.U), 
             ADD  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, rd, rs, rt),
@@ -133,6 +133,9 @@ class InstrDecode extends Module{
         MFC0->List(N, Y, Y),
         MTC0->List(Y, N, Y)
     ))
+    io.id_isu.bits.isWriteCP0 := decode_cp0(0)
+    io.id_isu.bits.isRead1CP0 := decode_cp0(1)
+    io.id_isu.bits.isRead2CP0 := decode_cp0(2)
     when(if_id_reg.except_info.enable){
         io.id_isu.bits.exu := PRU_ID
         io.id_isu.bits.op := PRU_EXCEPT_OP

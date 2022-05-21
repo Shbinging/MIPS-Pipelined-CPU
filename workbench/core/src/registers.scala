@@ -6,6 +6,7 @@ import njumips.configs._
 import njumips.consts._
 import njumips.configs._
 import chisel3.experimental.IO
+import javax.management.MBeanRegistrationException
 
 // class ProgramCounter extends Module {
 //     val io = IO(new Bundle{
@@ -95,6 +96,8 @@ class GPR extends Module {
 
 class CP0 extends Module{
     val io = IO(new Bundle{
+        val cp0_index = Output(UInt(conf.data_width.W))
+        val cp0_random = Output(UInt(conf.data_width.W))
         val cp0_entryhi = Output(new EntryHi)
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
@@ -103,12 +106,13 @@ class CP0 extends Module{
         val cp0_badAddr = Output(new cp0_BadVaddr_8)
         val cp0_epc = Output(new cp0_Epc_14)
         val cp0_context = Output(new cp0_Context_4)
-
+        val cp0_entrylo_0 = Output(new EntryLo)
+        val cp0_entrylo_1 = Output(new EntryLo)
+        
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
-
         val in_taglo_sel_0 = new CP0WriteInput
         val in_taghi_sel_0 = new CP0WriteInput
         val in_cause_sel_0 = new CP0WriteInput
@@ -133,13 +137,21 @@ class CP0 extends Module{
     val epc_sel_0 = RegInit(0.U(32.W))
     val context_sel_0 = RegInit(0.U(32.W))
     val entry_hi_sel_0 = RegInit(0.U(32.W))
+    val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data, io.in_entrylo0_sel_0.en)
+    val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data, io.in_entrylo1_sel_0.en)
 
+    io.cp0_index := index_sel_0
+    io.cp0_random := random_sel_0
     io.cp0_badAddr := badAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)
     io.cp0_cause := cause_sel_0.asTypeOf(new cp0_Cause_13)
     io.cp0_epc := cause_sel_0.asTypeOf(new cp0_Epc_14)
     io.cp0_status := status_sel_0.asTypeOf(new cp0_Status_12)
     io.cp0_context := context_sel_0.asTypeOf(new cp0_Context_4)
     io.cp0_entryhi := entry_hi_sel_0.asTypeOf(new EntryHi)
+    io.cp0_entrylo_0 := entrylo_0_sel_0.asTypeOf(new EntryLo)
+    io.cp0_entrylo_1 := entrylo_1_sel_0.asTypeOf(new EntryLo)
+    io.cp0_taglo := taglo_sel_0
+    io.cp0_taghi := taghi_sel_0
 
     when(io.in_cause_sel_0.en){cause_sel_0 := io.in_cause_sel_0.data}
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}

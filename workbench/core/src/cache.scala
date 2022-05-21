@@ -13,7 +13,7 @@ class CacheLine extends Bundle{
 
 class L1Cache extends Module{
     val io = IO(new Bundle{
-        val cache_cmd = new CacheCommandIO
+        val cache_cmd = Flipped(new CacheCommandIO)
         val in = Flipped(new CacheIO)
         val out = new MemIO
     })

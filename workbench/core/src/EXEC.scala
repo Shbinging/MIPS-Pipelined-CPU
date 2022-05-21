@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import firrtl.options.DoNotTerminateOnExit
 
 class PRU extends Module{
     val io = IO(new Bundle{
@@ -21,12 +22,12 @@ class PRU extends Module{
         val cp0_entryhi = Input(new EntryHi)
         val cp0_entrylo_0 = Input(new EntryLo)
         val cp0_entrylo_1 = Input(new EntryLo)
-        val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_badAddr = Input(new cp0_BadVaddr_8)
         val cp0_epc = Input(new cp0_Epc_14)
-
+        
+        val tlb_entries = Input(Vec(conf.tlb_size, new TLBEntry))
         val tlb_wr = new TLBEntryIO
     })
     val isu_pru_prepared = RegInit(N)
@@ -34,6 +35,9 @@ class PRU extends Module{
     
     val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
     io.exec_wb.bits := DontCare
+    io.tlb_wr <> DontCare
+    io.dcache_cmd <> DontCare
+    io.icache_cmd <> DontCare
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.bits.error.enable := N
@@ -78,11 +82,11 @@ class PRU extends Module{
                 printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
             }
             when(target_cache === "b00".U){         // ICache
-                io.icache_cmd := true.B
+                io.icache_cmd.en := true.B
                 io.icache_cmd.addr := address 
                 io.icache_cmd.code := operation
             } .elsewhen(target_cache === "b01".U){  // DCache
-                io.dcache_cmd := true.B
+                io.dcache_cmd.en := true.B
                 io.dcache_cmd.addr := address 
                 io.dcache_cmd.code := operation
             } .elsewhen(target_cache === "b11".U){  // L2 Cache
