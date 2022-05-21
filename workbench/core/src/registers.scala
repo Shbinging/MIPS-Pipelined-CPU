@@ -5,6 +5,7 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 import njumips.configs._
+import chisel3.experimental.IO
 
 // class ProgramCounter extends Module {
 //     val io = IO(new Bundle{
@@ -26,10 +27,6 @@ class GPR extends Module {
         val write_in = new GPRWriteInput
         val read_out = new GPRReadOutput
         val gpr_commit = Output(Vec(32, UInt(32.W)))
-        // val cp0_write_in = new CP0WriteInput
-        // val cp0_entryhi = Output(new EntryHi)
-        // val cp0_status = Output(new cp0_Status_12)
-        // val cp0_cause = Output(new cp0_Cause_13)
     })
     // TODO: support variable lengths configs
 
@@ -101,13 +98,16 @@ class CP0 extends {
         val cp0_entryhi = Output(new EntryHi)
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
+        val cp0_badAddr = Output(new cp0_BadVaddr_8)
 
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
+
     })
     val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
     val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random.sel_0.en)
+     
     // ect.
 }

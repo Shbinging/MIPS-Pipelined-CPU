@@ -49,7 +49,7 @@ class GPRWriteInput extends Bundle{
 
 class CP0WriteInput extends {
     val en = Input(Bool())
-    val data = Input(UInt(data_width.W))
+    val data = Input(UInt(32.W))
 }
 
 // WB_IF 
@@ -367,6 +367,10 @@ class cp0_Cause_13 extends Bundle{
     val Empty2 = UInt(1.W)
     val ExcCode = UInt(5.W)
     val Empty1 = UInt(2.W)
+}
+
+class cp0_BadVaddr_8 extends Bundle{
+    val badAddr = UInt(32.W)
 }
 
 class cp0_Config_16 extends Bundle{
