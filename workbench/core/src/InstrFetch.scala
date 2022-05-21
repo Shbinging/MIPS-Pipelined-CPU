@@ -77,6 +77,16 @@ class InstrFetch extends Module{
     io.if_id.bits.except_info.badVaddr := if_id_next_pc - 4.U 
     io.if_id.bits.except_info.exeCode := EC_TLBL
     io.if_id.bits.except_info.excType := exception
+
+    //FIXME::当地址不满足时候到底怎么处理，只要处理地址不对齐吗？
+    when((if_id_next_pc - 4.U)(1, 0) =/= 0.U){
+        io.if_id.bits.except_info.enable := Y
+        io.if_id.bits.except_info.EPC := if_id_next_pc - 4.U 
+        io.if_id.bits.except_info.badVaddr := if_id_next_pc - 4.U 
+        io.if_id.bits.except_info.exeCode := EC_AdEL
+        io.if_id.bits.except_info.excType := ET_ADDR_ERR
+        io.if_id.bits.instr := 0.U
+    }
     //io.if_id.bits.exception := exception
     
     when(io.if_id.fire()){

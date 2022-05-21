@@ -225,6 +225,7 @@ trait ExecUnitIndices {
   val PRU_MFC0_OP = 8.U(OPCODE_WIDTH.W)
   val PRU_MTC0_OP = 9.U(OPCODE_WIDTH.W)
   val PRU_ERET_OP = 10.U(OPCODE_WIDTH.W)
+  val PRU_RI_OP = 11.U(OPCODE_WIDTH.W)
 }
 
 trait InstrPattern {

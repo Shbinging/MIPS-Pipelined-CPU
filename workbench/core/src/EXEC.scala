@@ -56,6 +56,13 @@ class PRU extends Module{
         printf("@pru pru op is %d\n", r.pru_op)
     }
     switch(r.pru_op){
+        is(PRU_RI_OP){
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.excType := ET_RI
+            io.exec_wb.bits.error.exeCode := EC_RI
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.needCommit := Y
+        }
         is(PRU_SYSCALL_OP){
             io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
