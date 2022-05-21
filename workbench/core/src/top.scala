@@ -103,8 +103,8 @@ class verilator_top extends Module {
     write_back.io.lsu_wb <> lsu.io.exec_wb
     write_back.io.mdu_wb <> mdu.io.exec_wb
     write_back.io.pru_wb <> pru.io.exec_wb
-    
-    write_back.io.cp0_write_out <> cp0.io.cp0_write_in
+
+    // write_back.io.cp0_write_out <> cp0.io.cp0_write_in
     write_back.io.cp0_status := cp0.io.cp0_status
     write_back.io.cp0_cause := cp0.io.cp0_cause
 

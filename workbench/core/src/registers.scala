@@ -99,7 +99,7 @@ class CP0 extends Module{
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
         val cp0_badAddr = Output(new cp0_BadVaddr_8)
-
+        
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
