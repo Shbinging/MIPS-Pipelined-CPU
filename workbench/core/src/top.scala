@@ -121,6 +121,9 @@ class verilator_top extends Module {
 
     cp0.io.in_badAddr_sel_0 <> write_back.io.out_badAddr_sel_0
     cp0.io.in_cause_sel_0 <> write_back.io.out_cause_sel_0
+    cp0.io.in_context_sel_0 <> write_back.io.out_context_sel_0
+    cp0.io.in_entryhi_sel_0 <> write_back.io.out_entry_hi_sel_0
+    cp0.io.in_epc_sel_0 <> write_back.io.out_epc_sel_0
 
     io.commit <> DontCare
     for(i <- 0 to 31){
