@@ -110,7 +110,7 @@ class WriteBack extends Module{
         val cause_cur = WireInit(getCauseValue())
         val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
-        printf("@wb cause_cur %x\n", getCauseValue().asUInt())
+        
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -168,6 +168,7 @@ class WriteBack extends Module{
         val vecOff = WireInit(0.U(32.W))
         when(io.cp0_status.EXL === 0.U){
                 io.out_epc_sel_0.en := Y
+                printf("@wbu isSlot %x\n", isSlot)
                 when(isSlot){
                     io.out_epc_sel_0.data := exception.EPC - 4.U
                     cause_cur.BD := 1.U
@@ -222,15 +223,16 @@ class WriteBack extends Module{
         io.out_cause_sel_0.data := cause_cur.asUInt()
         io.out_status_sel_0.en := Y
         io.out_status_sel_0.data := status_cur.asUInt()
-        io.out_epc_sel_0.en := Y
-        io.out_epc_sel_0.data := exception.EPC
     }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
         needJump := N
-
+        val status_cur1 = WireInit(io.cp0_status)
+        status_cur1.EXL := 0.U
+        io.out_status_sel_0.en := Y
+        io.out_status_sel_0.data := status_cur1.asUInt()
         io.wb_if.bits.pc_w_data := reg_pru_wb.eret.w_pc_addr
         io.wb_if.bits.pc_w_en := Y
         io.commit.commit_pc := reg_pru_wb.current_pc
