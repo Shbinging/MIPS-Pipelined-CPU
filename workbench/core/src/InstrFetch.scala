@@ -26,6 +26,7 @@ class InstrFetch extends Module{
     when(io.wb_if.fire()){
         printf("branch!\n")
         pc_reg := io.wb_if.bits.pc_w_data
+        printf("@IF pc_reg %x\n", pc_reg)
         when(io.icache.req.ready){
             flush := N
         }.otherwise{
@@ -35,6 +36,7 @@ class InstrFetch extends Module{
         pc_reg := pc_reg + 4.U
     } 
 
+    def isAddrValid(x:UInt) = x(1, 0) === 0.U
     val request_pc = RegEnable(pc_reg, io.icache.req.fire())
 
     io.tlb_req.va := pc_reg
@@ -47,7 +49,7 @@ class InstrFetch extends Module{
     io.icache.req.bits.addr := io.tlb_resp.pa // pc_reg
     io.icache.req.bits.len := 3.U   // 00, 01, 10, 11
     io.icache.req.bits.exception := io.tlb_resp.exception
-    io.icache.req.valid := true.B && !io.flush
+    io.icache.req.valid := true.B && !io.flush && isAddrValid(pc_reg)
     
     io.icache.resp.ready := io.if_id.ready || !if_id_instr_prepared
     
@@ -67,7 +69,7 @@ class InstrFetch extends Module{
             if_id_instr_prepared := Y
         }
     }
-    io.if_id.valid := if_id_instr_prepared && !io.flush
+    io.if_id.valid := (if_id_instr_prepared || !isAddrValid(pc_reg)) && !io.flush
     io.if_id.bits.instr := Mux(exception === ET_None, if_id_instr, 0.U)
     
     io.if_id.bits.pcNext :=  if_id_next_pc
@@ -79,13 +81,14 @@ class InstrFetch extends Module{
     io.if_id.bits.except_info.excType := exception
 
     //FIXME::当地址不满足时候到底怎么处理，只要处理地址不对齐吗？
-    when((if_id_next_pc - 4.U)(1, 0) =/= 0.U){
+    when(!isAddrValid(pc_reg)){
         io.if_id.bits.except_info.enable := Y
-        io.if_id.bits.except_info.EPC := if_id_next_pc - 4.U 
-        io.if_id.bits.except_info.badVaddr := if_id_next_pc - 4.U 
+        io.if_id.bits.except_info.EPC := pc_reg
+        io.if_id.bits.except_info.badVaddr := pc_reg
         io.if_id.bits.except_info.exeCode := EC_AdEL
         io.if_id.bits.except_info.excType := ET_ADDR_ERR
         io.if_id.bits.instr := 0.U
+        io.if_id.bits.pcNext := pc_reg + 4.U
     }
     //io.if_id.bits.exception := exception
     

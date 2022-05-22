@@ -34,6 +34,7 @@ class PRU extends Module{
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
     
     val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
+    
     io.exec_wb.bits := DontCare
     io.tlb_wr <> DontCare
     io.dcache_cmd <> DontCare
@@ -55,6 +56,7 @@ class PRU extends Module{
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
+   
     switch(r.pru_op){
         is(PRU_RI_OP){
             io.exec_wb.bits.error.enable := Y
@@ -79,6 +81,9 @@ class PRU extends Module{
         }
         is(PRU_EXCEPT_OP){
             io.exec_wb.bits.error <> r.except_info
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.current_pc := r.current_pc
+            io.exec_wb.bits.current_instr := r.current_instr
         }
         is(PRU_CACHE_OP){
             val address = (r.rs_data.asSInt() + r.current_instr(15, 0).asSInt()).asUInt()(31, 0)
