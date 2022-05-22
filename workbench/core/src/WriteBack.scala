@@ -21,7 +21,7 @@ class WriteBack extends Module{
         val cp0_context = Input(new cp0_Context_4)
         val cp0_entryhi = Input(new EntryHi)
 
-        val cp0_write_out = Flipped(new CP0WriteInputWB)
+
         
         val out_index_sel_0 = Flipped(new CP0WriteInput)
         val out_cause_sel_0 = Flipped(new CP0WriteInput)
@@ -89,18 +89,26 @@ class WriteBack extends Module{
     io.gpr_wr.w_en := 0.U
     io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
-    io.cp0_write_out <> DontCare
+    
     val isBranch = RegEnable(io.bru_wb.bits.w_pc_en && io.bru_wb.fire(), N, io_fire)
     val isLastBranch = RegEnable(io.bru_wb.fire(), N, io_fire)
     val isSlot = RegNext(isLastBranch && io_fire, N)
     val needJump = RegNext(isBranch && io_fire, N)
     val isException = WireInit((alu_wb_fire && reg_alu_wb.error.enable) || (lsu_wb_fire && reg_lsu_wb.error.enable) || (mdu_wb_fire && reg_mdu_wb.error.enable) || (pru_wb_fire && reg_pru_wb.error.enable))
-    io.cp0_write_out.enableOther := N
-    io.cp0_write_out.enableEXL := N
+
     io.commit := DontCare
     io.commit.commit := N
-    
-    when(isException){//exception
+    def isCauseWrite() = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_cause
+    def isStatusWrite () = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_status
+    def getCauseValue() = Mux(isCauseWrite(), reg_bru_wb.w_data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
+    def getStatusValue() = Mux(isStatusWrite(), reg_bru_wb.w_data.asTypeOf(new cp0_Status_12), io.cp0_status)
+    def canInterupt(idx:UInt) = !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(idx).asBool() && getCauseValue().IP(idx).asBool()
+    def isSoftIntr0() = canInterupt(0.U)
+    def isSoftIntr1() = canInterupt(1.U)
+    def isSoftIntr() = (isSoftIntr0() || isSoftIntr1()) && !isException
+    when(isException || isSoftIntr()){//exception
+        val cause_cur = WireInit(io.cp0_cause)
+        val status_cur = WireInit(io.cp0_status)
         printf("exception! \n")
         io.flush := Y
         io.wb_if.valid := Y
@@ -109,6 +117,24 @@ class WriteBack extends Module{
         //TODO::exception fill
         val exception = Wire(new exceptionInfo)
         exception := DontCare
+        when(isSoftIntr0()){
+            exception.EPC := reg_pru_wb.current_pc
+            exception.enable := Y
+            exception.excType := ET_Int
+            exception.exeCode := EC_Int
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_pru_wb.current_instr
+            io.commit.commit_pc := reg_pru_wb.current_pc
+        }
+        when(isSoftIntr1()){
+            exception.EPC := reg_pru_wb.current_pc
+            exception.enable := Y
+            exception.excType := ET_Int
+            exception.exeCode := EC_Int
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_pru_wb.current_instr
+            io.commit.commit_pc := reg_pru_wb.current_pc
+        }
         when((alu_wb_fire && reg_alu_wb.error.enable)){
             exception := reg_alu_wb.error
             io.commit.commit := Y
@@ -132,20 +158,19 @@ class WriteBack extends Module{
             }
         }
         
-        io.cp0_write_out.enableEXL := Y
-        io.cp0_write_out.enableOther := Y
+        
+
         // io.cp0_write_out.Cause := io.cp0_read_in.Cause
         // io.cp0_write_out.Status := io.cp0_read_in.Status
         val vecOff = WireInit(0.U(32.W))
         when(io.cp0_status.EXL === 0.U){
+                io.out_epc_sel_0.en := Y
                 when(isSlot){
-                    io.cp0_write_out.epc := exception.EPC - 4.U
-                    io.cp0_write_out.BD := 1.U
-                    // io.cp0_write_out.Cause.BD := 1.U
+                    io.out_epc_sel_0.data := exception.EPC - 4.U
+                    cause_cur.BD := 1.U
                 }.otherwise{
-                    io.cp0_write_out.epc := exception.EPC
-                    io.cp0_write_out.BD := 0.U 
-                    // io.cp0_write_out.Cause.BD := 0.U
+                    io.out_epc_sel_0.data := exception.EPC
+                    cause_cur.BD := 0.U
                 }
                 //TODO:: check type
                 when (exception.excType === ET_TLB_REFILL){
@@ -158,10 +183,10 @@ class WriteBack extends Module{
         }.otherwise{
             vecOff := 0x180.U
         }
-        io.cp0_write_out.enableVaddress := N
+        
         when(exception.excType === ET_ADDR_ERR){
-            io.cp0_write_out.enableVaddress := Y
-            io.cp0_write_out.vAddr := exception.badVaddr
+            io.out_badAddr_sel_0.en := Y
+            io.out_badAddr_sel_0.data := exception.badVaddr
         }
         when(VecInit(ET_TLB_Inv, ET_TLB_Miss, ET_TLB_Mod, ET_TLB_REFILL).contains(exception.excType)){
             io.out_badAddr_sel_0.en := Y
@@ -180,9 +205,9 @@ class WriteBack extends Module{
         }
 
 
-        io.cp0_write_out.ExcCode := exception.exeCode
+        cause_cur.ExcCode := exception.exeCode
         printf("@wb excCode %x vecOff %x\n", exception.exeCode, vecOff)
-        io.cp0_write_out.EXL := 1.U
+        status_cur.EXL := 1.U
         io.wb_if.bits.pc_w_en := Y
 
         when(io.cp0_status.BEV === 1.U){
@@ -190,15 +215,17 @@ class WriteBack extends Module{
         }.otherwise{
             io.wb_if.bits.pc_w_data := 0x80000000L.asUInt(32.W) + vecOff
         }
-        //io.wb_if.bits.pc_w_data :=  0xbfc00200L.asUInt(32.W) + vecOff
+        io.out_cause_sel_0.en := Y
+        io.out_cause_sel_0.data := cause_cur.asUInt()
+        io.out_status_sel_0.en := Y
+        io.out_status_sel_0.data := status_cur.asUInt()
+        
     }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
         needJump := N
-        io.cp0_write_out.enableEXL := Y
-        io.cp0_write_out.EXL := 0.U
         io.wb_if.bits.pc_w_data := reg_pru_wb.eret.w_pc_addr
         io.wb_if.bits.pc_w_en := Y
         io.commit.commit_pc := reg_pru_wb.current_pc
