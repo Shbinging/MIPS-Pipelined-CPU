@@ -115,7 +115,9 @@ class InstrDecode extends Module{
             TLBP -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBP_OP, 0.U, 0.U, 0.U),
             TLBR -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBR_OP, 0.U, 0.U, 0.U),
             TLBWI-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWI_OP, 0.U, 0.U, 0.U),
-            TLBWR-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWR_OP, 0.U, 0.U, 0.U)
+            TLBWR-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWR_OP, 0.U, 0.U, 0.U),
+            
+            PREF -> List(0.U, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, 0.U, 0.U, 0.U),
             )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)

@@ -318,7 +318,8 @@ trait InstrPattern {
   val TLBR  = BitPat("b01000010000000000000000000000001")
   val TLBWI = BitPat("b01000010000000000000000000000010")
   val TLBWR = BitPat("b01000010000000000000000000000110")
-  
+
+  val PREF = BitPat("b11001100????????????????????????")
 }
 
 object consts extends InstrPattern
