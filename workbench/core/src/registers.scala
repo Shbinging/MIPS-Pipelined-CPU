@@ -57,6 +57,9 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := regs(i).asUInt()
     }
+    // for( i<- 0 to 31){
+    //     printf(p"reg ${i}: ${regs(i)}\n")
+    // }
     // when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
     //     val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
     //     val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
@@ -124,7 +127,7 @@ class CP0 extends Module{
 
         
     })
-    val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
+    val index_sel_0 = RegInit(0.U(conf.data_width.W)) 
     val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
     val taglo_sel_0 = RegEnable(io.in_taglo_sel_0.data, io.in_taglo_sel_0.en)
     val taghi_sel_0 = RegEnable(io.in_taghi_sel_0.data, io.in_taghi_sel_0.en)   
@@ -135,9 +138,9 @@ class CP0 extends Module{
     val status_sel_0 = RegInit(0.U(32.W))
     val epc_sel_0 = RegInit(0.U(32.W))
     val context_sel_0 = RegInit(0.U(32.W))
-    val entry_hi_sel_0 = RegInit(0.U(32.W))
-    val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data, io.in_entrylo0_sel_0.en)
-    val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data, io.in_entrylo1_sel_0.en)
+    val entry_hi_sel_0 = RegEnable(io.in_entryhi_sel_0.data & "h_ffffe0ff".U(conf.data_width.W), io.in_entryhi_sel_0.en)
+    val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo0_sel_0.en)
+    val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo1_sel_0.en)
 
     io.cp0_index := index_sel_0
     io.cp0_random := random_sel_0
@@ -152,13 +155,14 @@ class CP0 extends Module{
     io.cp0_taglo := taglo_sel_0
     io.cp0_taghi := taghi_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
-    when(io.in_cause_sel_0.en){cause_sel_0 := io.in_cause_sel_0.data
-        
+    when(io.in_cause_sel_0.en){
+        cause_sel_0 := io.in_cause_sel_0.data    
     }
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
     when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}
     when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
     when (io.in_context_sel_0.en){context_sel_0 := io.in_context_sel_0.data}
-    when(io.in_entryhi_sel_0.en){entry_hi_sel_0 := io.in_entryhi_sel_0.data}
-
+    when(io.in_index_sel_0.en){
+        index_sel_0 := Mux(io.in_index_sel_0.data==="h_8000_0000".U, io.in_index_sel_0.data, io.in_index_sel_0.data(log2Ceil(conf.tlb_size)-1-1, 0))
+    }
 }

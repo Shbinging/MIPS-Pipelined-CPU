@@ -309,6 +309,26 @@ class WriteBack extends Module{
                         io.out_status_sel_0.en := Y
                         io.out_status_sel_0.data := reg_pru_wb.mft.data
                     }
+                    is(index_cp0_index){
+                        io.out_index_sel_0.en := Y 
+                        io.out_index_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    // is(index_cp0_random){
+                    //     io.out_random_sel_0.en := Y 
+                    //     io.out_random_sel_0.data := reg_pru_wb.mft.data
+                    // }
+                    is(index_cp0_entrylo0){
+                        io.out_entrylo0_sel_0.en := Y 
+                        io.out_entrylo0_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_entrylo1){
+                        io.out_entrylo1_sel_0.en := Y 
+                        io.out_entrylo1_sel_0.data := reg_pru_wb.mft.data 
+                    }
+                    is(index_cp0_entryhi){
+                        io.out_entryhi_sel_0.en := Y 
+                        io.out_entryhi_sel_0.data := reg_pru_wb.mft.data
+                    }
                 }
             }.otherwise{//to general
                 io.gpr_wr.w_en := "b1111".U

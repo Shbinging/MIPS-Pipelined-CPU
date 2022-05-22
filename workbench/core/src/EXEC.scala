@@ -133,6 +133,10 @@ class PRU extends Module{
             io.tlb_wr.hi := io.cp0_entryhi
             io.tlb_wr.lo_0 := io.cp0_entrylo_0
             io.tlb_wr.lo_1 := io.cp0_entrylo_1
+            when(io.cp0_entrylo_0.global=/=io.cp0_entrylo_1.global){
+                io.tlb_wr.lo_0.global := 0.U(1.W)
+                io.tlb_wr.lo_1.global := 0.U(1.W)
+            }
         }
         is(PRU_TLBWR_OP){
             io.tlb_wr.en := true.B 
@@ -156,7 +160,12 @@ class PRU extends Module{
             //XXX:sel = 0
            // printf("@pru r.rs_addr %d io.cp0_epc.asUInt %x\n", r.rs_addr, io.cp0_epc.epc)
             io.exec_wb.bits.mft.data := MuxLookup(r.rs_addr, 0.U, Array(
+                index_cp0_index -> io.cp0_index.asUInt(),
+                index_cp0_random -> io.cp0_random.asUInt(),
+                index_cp0_entrylo0 -> io.cp0_entrylo_0.asUInt(),
+                index_cp0_entrylo1 -> io.cp0_entrylo_1.asUInt(),
                 index_cp0_badvaddr -> io.cp0_badAddr.asUInt(),
+                index_cp0_entryhi -> io.cp0_entryhi.asUInt(),
                 index_cp0_cause -> io.cp0_cause.asUInt(),
                 index_cp0_epc -> io.cp0_epc.epc,
                 index_cp0_status -> io.cp0_status.asUInt()

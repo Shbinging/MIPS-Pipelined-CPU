@@ -63,7 +63,12 @@ trait CP0Consts {
   val EC_Ov   = 12.U(EC_WIDTH.W)  // * Arithmetic overflow
   val EC_Tr   = 13.U(EC_WIDTH.W)  // * Trap
 
-val index_cp0_badvaddr = 8.U(5.W)
+  val index_cp0_index = 0.U(5.W)
+  val index_cp0_random = 1.U(5.W)
+  val index_cp0_entrylo0 = 2.U(5.W)
+  val index_cp0_entrylo1 = 3.U(5.W)
+  val index_cp0_badvaddr = 8.U(5.W)
+  val index_cp0_entryhi = 10.U(5.W)
   val index_cp0_status = 12.U(5.W)
   val index_cp0_cause = 13.U(5.W)
   val index_cp0_epc = 14.U(5.W)
