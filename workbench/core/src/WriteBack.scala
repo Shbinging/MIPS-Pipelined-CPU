@@ -100,16 +100,17 @@ class WriteBack extends Module{
     io.commit.commit := N
     def isCauseWrite() = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_cause
     def isStatusWrite () = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_status
-    def getCauseValue() = Mux(isCauseWrite(), reg_bru_wb.w_data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
-    def getStatusValue() = Mux(isStatusWrite(), reg_bru_wb.w_data.asTypeOf(new cp0_Status_12), io.cp0_status)
+    def getCauseValue() = Mux(isCauseWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
+    def getStatusValue() = Mux(isStatusWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Status_12), io.cp0_status)
     def canInterupt(idx:UInt) = !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(idx).asBool() && getCauseValue().IP(idx).asBool()
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
-    def isSoftIntr() = (isSoftIntr0() || isSoftIntr1()) && !isException
+    def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
     when(isException || isSoftIntr()){//exception
-        val cause_cur = WireInit(io.cp0_cause)
-        val status_cur = WireInit(io.cp0_status)
+        val cause_cur = WireInit(getCauseValue())
+        val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
+        printf("@wb cause_cur %x\n", getCauseValue().asUInt())
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -125,6 +126,7 @@ class WriteBack extends Module{
             io.commit.commit := Y
             io.commit.commit_instr := reg_pru_wb.current_instr
             io.commit.commit_pc := reg_pru_wb.current_pc
+            cause_cur.IP := io.cp0_cause.IP | 1.U
         }
         when(isSoftIntr1()){
             exception.EPC := reg_pru_wb.current_pc
@@ -134,6 +136,7 @@ class WriteBack extends Module{
             io.commit.commit := Y
             io.commit.commit_instr := reg_pru_wb.current_instr
             io.commit.commit_pc := reg_pru_wb.current_pc
+            cause_cur.IP := io.cp0_cause.IP | 2.U
         }
         when((alu_wb_fire && reg_alu_wb.error.enable)){
             exception := reg_alu_wb.error
@@ -219,13 +222,15 @@ class WriteBack extends Module{
         io.out_cause_sel_0.data := cause_cur.asUInt()
         io.out_status_sel_0.en := Y
         io.out_status_sel_0.data := status_cur.asUInt()
-        
+        io.out_epc_sel_0.en := Y
+        io.out_epc_sel_0.data := exception.EPC
     }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
         needJump := N
+
         io.wb_if.bits.pc_w_data := reg_pru_wb.eret.w_pc_addr
         io.wb_if.bits.pc_w_en := Y
         io.commit.commit_pc := reg_pru_wb.current_pc
@@ -292,6 +297,7 @@ class WriteBack extends Module{
                         io.out_badAddr_sel_0.data := reg_pru_wb.mft.data
                     }
                     is(index_cp0_cause){
+                        printf("@wb cp0_cause %x\n", reg_pru_wb.mft.data)
                         io.out_cause_sel_0.en := Y
                         io.out_cause_sel_0.data := reg_pru_wb.mft.data
                     }

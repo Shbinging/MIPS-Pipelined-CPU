@@ -154,7 +154,7 @@ class PRU extends Module{
             io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
             //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
             //XXX:sel = 0
-            //printf("@pru r.rs_addr %d io.cp0_epc.asUInt %x\n", r.rs_addr, io.cp0_epc.epc)
+           // printf("@pru r.rs_addr %d io.cp0_epc.asUInt %x\n", r.rs_addr, io.cp0_epc.epc)
             io.exec_wb.bits.mft.data := MuxLookup(r.rs_addr, 0.U, Array(
                 index_cp0_badvaddr -> io.cp0_badAddr.asUInt(),
                 index_cp0_cause -> io.cp0_cause.asUInt(),
@@ -168,7 +168,7 @@ class PRU extends Module{
             io.exec_wb.bits.mft.destSel := Y
             io.exec_wb.bits.mft.destAddr := r.rd_addr
             io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
-            //printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
+            printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
             //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
             io.exec_wb.bits.mft.data := r.rs_data
         }

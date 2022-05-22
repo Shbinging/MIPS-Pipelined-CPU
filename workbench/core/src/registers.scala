@@ -151,8 +151,10 @@ class CP0 extends Module{
     io.cp0_entrylo_1 := entrylo_1_sel_0.asTypeOf(new EntryLo)
     io.cp0_taglo := taglo_sel_0
     io.cp0_taghi := taghi_sel_0
-
-    when(io.in_cause_sel_0.en){cause_sel_0 := io.in_cause_sel_0.data}
+    printf("@cp0 cause %x\n", cause_sel_0)
+    when(io.in_cause_sel_0.en){cause_sel_0 := io.in_cause_sel_0.data
+        
+    }
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
     when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}
     when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
