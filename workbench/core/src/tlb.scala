@@ -77,10 +77,12 @@ class TLBTranslator extends Module{
                 }
                 io.resp.pa := Cat(entry.pfn(19, 0), io.req.va(11, 0))
                 found := true.B
+                printf(p"Found at ${i} ${io.req.va} ${io.resp.pa}\n")
             }
         } 
 
         when(!found){
+            printf("not found\n")
             io.resp.exception := ET_TLB_Miss
         }
     }

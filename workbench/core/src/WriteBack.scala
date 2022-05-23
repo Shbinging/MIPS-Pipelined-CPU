@@ -176,7 +176,7 @@ class WriteBack extends Module{
                     cause_cur.BD := 0.U
                 }
                 //TODO:: check type
-                when (exception.excType === ET_TLB_REFILL){
+                when (exception.excType === ET_TLB_REFILL || exception.excType === ET_TLB_Miss){
                     vecOff := 0x0.U
                 }.elsewhen(exception.exeCode === EC_Int && io.cp0_cause.IV === 1.U){
                     vecOff := 0x200.U
@@ -306,6 +306,7 @@ class WriteBack extends Module{
                         io.out_epc_sel_0.data := reg_pru_wb.mft.data
                     }
                     is(index_cp0_status){
+                        printf(p"write to cp0 status ${reg_pru_wb.mft.data}")
                         io.out_status_sel_0.en := Y
                         io.out_status_sel_0.data := reg_pru_wb.mft.data
                     }

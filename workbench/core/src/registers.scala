@@ -135,7 +135,7 @@ class CP0 extends Module{
     val baddAddr_sel_0 = RegInit(0.U(32.W))
     val badAddr_sel_0 = RegInit(0.U(32.W))
     val cause_sel_0 = RegInit(0.U(32.W))
-    val status_sel_0 = RegInit(0.U(32.W))
+    val status_sel_0 = RegInit("h_1040_0000".U(32.W))
     val epc_sel_0 = RegInit(0.U(32.W))
     val context_sel_0 = RegInit(0.U(32.W))
     val entry_hi_sel_0 = RegEnable(io.in_entryhi_sel_0.data & "h_ffffe0ff".U(conf.data_width.W), io.in_entryhi_sel_0.en)
