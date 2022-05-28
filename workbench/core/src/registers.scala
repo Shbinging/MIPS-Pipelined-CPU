@@ -163,6 +163,6 @@ class CP0 extends Module{
     when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
     when (io.in_context_sel_0.en){context_sel_0 := io.in_context_sel_0.data}
     when(io.in_index_sel_0.en){
-        index_sel_0 := Mux(io.in_index_sel_0.data==="h_8000_0000".U, io.in_index_sel_0.data, io.in_index_sel_0.data(log2Ceil(conf.tlb_size)-1-1, 0))
+        index_sel_0 := Mux(io.in_index_sel_0.data==="h_8000_0000".U, io.in_index_sel_0.data, io.in_index_sel_0.data(log2Ceil(conf.tlb_size)-1, 0))
     }
 }

@@ -32,7 +32,6 @@ trait CP0Consts {
   val ET_TLB_REFILL =   7.U(ET_WIDTH.W)
   val ET_TLB_Inv    =   8.U(ET_WIDTH.W)
   val ET_TLB_Mod    =   9.U(ET_WIDTH.W)
-  val ET_TLB_Miss   =  23.U(ET_WIDTH.W) // XXX
   val ET_CACHE_ERR  =  10.U(ET_WIDTH.W)
   val ET_BUS_ERR    =  11.U(ET_WIDTH.W)
   val ET_Ov         =  12.U(ET_WIDTH.W)

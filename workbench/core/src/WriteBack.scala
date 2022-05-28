@@ -176,7 +176,7 @@ class WriteBack extends Module{
                     cause_cur.BD := 0.U
                 }
                 //TODO:: check type
-                when (exception.excType === ET_TLB_REFILL || exception.excType === ET_TLB_Miss){
+                when (exception.excType === ET_TLB_REFILL){
                     vecOff := 0x0.U
                 }.elsewhen(exception.exeCode === EC_Int && io.cp0_cause.IV === 1.U){
                     vecOff := 0x200.U
@@ -191,7 +191,7 @@ class WriteBack extends Module{
             io.out_badAddr_sel_0.en := Y
             io.out_badAddr_sel_0.data := exception.badVaddr
         }
-        when(VecInit(ET_TLB_Inv, ET_TLB_Miss, ET_TLB_Mod, ET_TLB_REFILL).contains(exception.excType)){
+        when(VecInit(ET_TLB_Inv, ET_TLB_Mod, ET_TLB_REFILL).contains(exception.excType)){
             io.out_badAddr_sel_0.en := Y
             io.out_badAddr_sel_0.data := exception.badVaddr
 

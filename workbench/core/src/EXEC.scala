@@ -536,9 +536,11 @@ class LSU extends Module{
                 // val tlb_req = Flipped(new TLBTranslatorReq)
                 // val tlb_resp = Flipped(new TLBTranslatorResp)
                 io.tlb_req.va := read_reg.addr & (~3.U(32.W))
+                printf(p"*!* ${io.tlb_req.va}\n")
                 io.tlb_req.ref_type := MX_RD
                 io.dcache.req.valid := true.B
                 io.dcache.req.bits.is_cached := io.tlb_resp.cached
+                printf(p"${r.current_pc} load from ${io.tlb_resp.pa}\n")
 				io.dcache.req.bits.addr := io.tlb_resp.pa // read_reg.addr & (~3.U(32.W))
                 io.dcache.req.bits.exception := io.tlb_resp.exception
 				io.dcache.req.bits.func := MX_RD
@@ -611,6 +613,7 @@ class LSU extends Module{
                     io.tlb_req.ref_type := MX_WR
                     io.dcache.req.valid := true.B
                     io.dcache.req.bits.is_cached := io.tlb_resp.cached
+                    printf(p" ${r.current_pc} store into ${io.tlb_resp.pa}\n")
 		    		io.dcache.req.bits.addr := io.tlb_resp.pa 
                     io.dcache.req.bits.exception := io.tlb_resp.exception
                     io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
