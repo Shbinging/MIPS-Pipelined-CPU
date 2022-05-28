@@ -184,6 +184,7 @@ class WriteBack extends Module{
                     vecOff := 0x180.U
                 }
         }.otherwise{
+            printf(p"${reg_pru_wb.current_pc} ??? EXL, EXCTYPE :${exception.excType}\n")
             vecOff := 0x180.U
         }
         
@@ -233,6 +234,15 @@ class WriteBack extends Module{
 
         io.wb_if.bits.pc_w_data := reg_pru_wb.eret.w_pc_addr
         io.wb_if.bits.pc_w_en := Y
+        // XXX: is it correct? check the manual ERET 
+        when(io.cp0_status.ERL.asBool()){
+            io.out_status_sel_0.en := Y 
+            io.out_status_sel_0.data := io.cp0_status.asUInt & "h_ffff_fffb".U 
+        } .otherwise{
+            io.out_status_sel_0.en := Y 
+            io.out_status_sel_0.data := io.cp0_status.asUInt & "h_ffff_fffd".U
+        }
+
         io.commit.commit_pc := reg_pru_wb.current_pc
         io.commit.commit_instr := reg_pru_wb.current_instr
         io.commit.commit := true.B
