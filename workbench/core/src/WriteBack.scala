@@ -118,7 +118,7 @@ class WriteBack extends Module{
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
-    def isIrq7() = io.isIrq7
+    def isIrq7() = io.isIrq7 && io.cp0_status.EXL === 0.U
     def isEret() = pru_wb_fire && reg_pru_wb.eret.en
     when(isException || isSoftIntr() || isIrq7()){//exception
         val cause_cur = WireInit(getCauseValue())
@@ -133,7 +133,7 @@ class WriteBack extends Module{
         val exception = Wire(new exceptionInfo)
         exception := DontCare
         when(isIrq7()){
-            printf("@wb int0\n")
+            printf("@wb irq7\n")
             exception.EPC := reg_pru_wb.current_pc + 4.U
             exception.enable := Y
             exception.excType := ET_Int

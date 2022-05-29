@@ -164,14 +164,19 @@ class CP0 extends Module{
     io.cp0_compare_0 := compare_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
 
-    def isIrq7() = (compare_sel_0 === count_sel_0)
-    printf("@cp0 %x %x\n", compare_sel_0, count_sel_0)
+    
+    //printf("@cp0 %x %x\n", compare_sel_0, count_sel_0)
     //assert(!isIrq7())
     //def isIrq7() = N
     when(io.in_cause_sel_0.en){
         cause_sel_0 := io.in_cause_sel_0.data & "b1000_0000_1100_0000_1111_1111_0111_1100".U
     }
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
+    val compare = WireInit(Mux(io.in_cp0_compare_0.en, io.in_cp0_compare_0.data, compare_sel_0))
+    val count = WireInit(Mux(io.in_cp0_count_0.en, io.in_cp0_count_0.data, count_sel_0))
+
+    def isIrq7() = (compare === count)
+
     when(io.in_status_sel_0.en){
         when(isIrq7()){
             status_sel_0 := io.in_status_sel_0.data | "b1000_0000_0000_0000".U
