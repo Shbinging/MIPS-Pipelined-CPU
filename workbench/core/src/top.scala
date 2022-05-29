@@ -111,6 +111,7 @@ class verilator_top extends Module {
     write_back.io.cp0_context := cp0.io.cp0_context
     write_back.io.cp0_entryhi := cp0.io.cp0_entryhi
     write_back.io.cp0_status := cp0.io.cp0_status
+    write_back.io.isIrq7 := cp0.io.irq7
 
     gprs.io.write_in <> write_back.io.gpr_wr
 
@@ -128,6 +129,9 @@ class verilator_top extends Module {
     pru.io.cp0_status := cp0.io.cp0_status
 
     pru.io.tlb_entries := tlb.io.entries
+    pru.io.cp0_compare := cp0.io.cp0_compare_0
+    pru.io.cp0_count := cp0.io.cp0_count_0
+
     tlb.io.in := pru.io.tlb_wr
 
     icache.io.cache_cmd := pru.io.icache_cmd
@@ -144,6 +148,10 @@ class verilator_top extends Module {
     cp0.io.in_entryhi_sel_0 := write_back.io.out_entryhi_sel_0
     cp0.io.in_entrylo0_sel_0 := write_back.io.out_entrylo0_sel_0
     cp0.io.in_entrylo1_sel_0 := write_back.io.out_entrylo1_sel_0
+    cp0.io.in_cp0_count_0 := write_back.io.out_count_sel_0
+    cp0.io.in_cp0_compare_0 := write_back.io.out_compare_sel_0
+    
+
     cp0.io.in_taghi_sel_0.en := N 
     cp0.io.in_taghi_sel_0.data <> DontCare
     cp0.io.in_taglo_sel_0.en := N 

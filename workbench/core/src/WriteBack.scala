@@ -68,8 +68,8 @@ class WriteBack extends Module{
     io.out_entryhi_sel_0.en := N
     io.out_entrylo0_sel_0.en := N
     io.out_entrylo1_sel_0.en := N
-    io.out_count_sel_0 := N
-    io.out_compare_sel_0 := N
+    io.out_count_sel_0.en := N
+    io.out_compare_sel_0.en := N
 
     io.alu_wb.ready := true.B
     io.bru_wb.ready := true.B
@@ -119,7 +119,8 @@ class WriteBack extends Module{
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
     def isIrq7() = io.isIrq7
-    when(isException || isSoftIntr() || isIrq7()){//exception
+    def isEret() = pru_wb_fire && reg_pru_wb.eret.en
+    when(isException || isSoftIntr()){//exception
         val cause_cur = WireInit(getCauseValue())
         val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
@@ -131,17 +132,14 @@ class WriteBack extends Module{
         //TODO::exception fill
         val exception = Wire(new exceptionInfo)
         exception := DontCare
-        when(isIrq7()){
-            printf("@wb int0\n")
-            exception.EPC := reg_pru_wb.current_pc + 4.U
-            exception.enable := Y
-            exception.excType := ET_Int
-            exception.exeCode := EC_Int
-            io.commit.commit := Y
-            io.commit.commit_instr := reg_pru_wb.current_instr
-            io.commit.commit_pc := reg_pru_wb.current_pc
-            cause_cur.IP := getCauseValue().IP | 1.U
-        }
+        // when(isIrq7()){
+        //     printf("@wb int0\n")
+        //     exception.EPC := reg_pru_wb.current_pc + 4.U
+        //     exception.enable := Y
+        //     exception.excType := ET_Int
+        //     exception.exeCode := EC_Int
+        //     cause_cur.IP := getCauseValue().IP | "b1000_0000".U
+        // }
         when(isSoftIntr0()){
             printf("@wb int0\n")
             exception.EPC := reg_pru_wb.current_pc + 4.U
@@ -256,7 +254,7 @@ class WriteBack extends Module{
         io.out_status_sel_0.data := status_cur.asUInt()
         //io.out_epc_sel_0.en := Y
         //io.out_epc_sel_0.data := exception.EPC
-    }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
+    }.elsewhen(isEret()){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
         io.wb_if.valid := Y
@@ -287,7 +285,8 @@ class WriteBack extends Module{
         io.wb_if.valid := N
         io.flush := N
     }
-
+    }
+    when(!isException && !isSoftIntr() && !isEret()){
     io.commit <> DontCare
     io.commit.commit := false.B
     when(alu_wb_fire){

@@ -164,7 +164,8 @@ class CP0 extends Module{
     io.cp0_compare_0 := compare_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
 
-    def isIrq7() = compare_sel_0 === count_sel_0
+    //def isIrq7() = compare_sel_0 === count_sel_0
+    def isIrq7() = N
     when(io.in_cause_sel_0.en){
         cause_sel_0 := io.in_cause_sel_0.data & "b1000_0000_1100_0000_1111_1111_0111_1100".U
     }
