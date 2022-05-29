@@ -156,7 +156,7 @@ class CP0 extends Module{
     io.cp0_taghi := taghi_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
     when(io.in_cause_sel_0.en){
-        cause_sel_0 := io.in_cause_sel_0.data    
+        cause_sel_0 := io.in_cause_sel_0.data & "b1000_0000_1100_0000_1111_1111_0111_1100".U
     }
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
     when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}

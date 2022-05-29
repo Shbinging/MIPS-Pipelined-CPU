@@ -24,9 +24,9 @@ class InstrFetch extends Module{
     val if_id_instr_prepared = RegInit(false.B)
     io.wb_if.ready := true.B
     when(io.wb_if.fire()){
-        printf("branch!\n")
+        //printf("branch!\n")
         pc_reg := io.wb_if.bits.pc_w_data
-        printf("@IF pc_reg %x\n", pc_reg)
+        //printf("@IF pc_reg %x\n", pc_reg)
         when(io.icache.req.ready){
             flush := N
         }.otherwise{
@@ -62,7 +62,7 @@ class InstrFetch extends Module{
         if_id_instr_prepared := N
     } .elsewhen(!io.flush && io.icache.resp.fire()){
         when(flush){
-            printf("flush wrong instr %x\n", io.icache.resp.bits.data)
+           // printf("flush wrong instr %x\n", io.icache.resp.bits.data)
             flush := N
             if_id_instr_prepared := N
         }.otherwise{

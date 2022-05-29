@@ -54,7 +54,7 @@ class PRU extends Module{
 
     io.tlb_wr.en := false.B
     when(io.exec_wb.fire()){
-        printf("@pru pru op is %d\n", r.pru_op)
+        //printf("@pru pru op is %d\n", r.pru_op)
     }
    
     switch(r.pru_op){
@@ -91,7 +91,7 @@ class PRU extends Module{
             val operation = r.current_instr(20, 18)
             when(operation === "b010".U){
                 // assume it is only used for setup
-                printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
+                //printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
             }
             when(target_cache === "b00".U){         // ICache
                 io.icache_cmd.en := true.B
@@ -102,9 +102,9 @@ class PRU extends Module{
                 io.dcache_cmd.addr := address 
                 io.dcache_cmd.code := operation
             } .elsewhen(target_cache === "b11".U){  // L2 Cache
-                printf("L2 Cache Command, ignore it.\n")
+                //printf("L2 Cache Command, ignore it.\n")
             } .otherwise{
-                printf("Unexpected Cache!\n")
+                //printf("Unexpected Cache!\n")
             }
         }
         is(PRU_TLBP_OP){
@@ -177,7 +177,7 @@ class PRU extends Module{
             io.exec_wb.bits.mft.destSel := Y
             io.exec_wb.bits.mft.destAddr := r.rd_addr
             io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
-            printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
+            //printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
             //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
             io.exec_wb.bits.mft.data := r.rs_data
         }
@@ -264,7 +264,7 @@ class ALU extends Module{
     when(r.alu_op === ALU_ADD_OP){ 
         when(A_in(31) === B_in(31) && B_in(31) =/= ALU_out(31)){
             when(io.exec_wb.fire()){
-                printf("@%x %x+%x=%x add overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+                //printf("@%x %x+%x=%x add overflow!\n", r.current_pc, A_in, B_in, ALU_out)
             }
             io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.EPC := r.current_pc
@@ -275,7 +275,7 @@ class ALU extends Module{
     when(r.alu_op === ALU_SUB_OP){
         when(A_in(31) === (-(B_in.asSInt())).asUInt()(31) && A_in(31) =/= ALU_out(31)){
             when(io.exec_wb.fire()){
-                printf("@%x %x+%x=%x sub overflow!\n", r.current_pc, A_in, B_in, ALU_out)
+                //printf("@%x %x+%x=%x sub overflow!\n", r.current_pc, A_in, B_in, ALU_out)
             }
             io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.EPC := r.current_pc
@@ -536,17 +536,17 @@ class LSU extends Module{
                 // val tlb_req = Flipped(new TLBTranslatorReq)
                 // val tlb_resp = Flipped(new TLBTranslatorResp)
                 io.tlb_req.va := read_reg.addr & (~3.U(32.W))
-                printf(p"*!* ${io.tlb_req.va}\n")
+                //printf(p"*!* ${io.tlb_req.va}\n")
                 io.tlb_req.ref_type := MX_RD
                 io.dcache.req.valid := true.B
                 io.dcache.req.bits.is_cached := io.tlb_resp.cached
-                printf(p"${r.current_pc} load from ${io.tlb_resp.pa}\n")
+                //printf(p"${r.current_pc} load from ${io.tlb_resp.pa}\n")
 				io.dcache.req.bits.addr := io.tlb_resp.pa // read_reg.addr & (~3.U(32.W))
                 io.dcache.req.bits.exception := io.tlb_resp.exception
 				io.dcache.req.bits.func := MX_RD
 				io.dcache.req.bits.len := 3.U
 				io.dcache.resp.ready := true.B
-                printf("LOAD at %x\n", io.dcache.req.bits.addr)
+                //printf("LOAD at %x\n", io.dcache.req.bits.addr)
 			}
 			when(io.dcache.resp.fire()){
                 when(io.dcache.resp.bits.exception === ET_None){
@@ -613,7 +613,7 @@ class LSU extends Module{
                     io.tlb_req.ref_type := MX_WR
                     io.dcache.req.valid := true.B
                     io.dcache.req.bits.is_cached := io.tlb_resp.cached
-                    printf(p" ${r.current_pc} store into ${io.tlb_resp.pa}\n")
+                   // printf(p" ${r.current_pc} store into ${io.tlb_resp.pa}\n")
 		    		io.dcache.req.bits.addr := io.tlb_resp.pa 
                     io.dcache.req.bits.exception := io.tlb_resp.exception
                     io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)
@@ -648,10 +648,10 @@ class LSU extends Module{
                     io.exec_wb.bits.error.EPC := r.current_pc
                     io.exec_wb.bits.error.excType := ET_ADDR_ERR
                     when(VecInit(LSU_SW_OP, LSU_SH_OP).contains(r.lsu_op)){
-                        printf("@lsu error store address!\n")
+                        //printf("@lsu error store address!\n")
                         io.exec_wb.bits.error.exeCode := EC_AdES
                     }.otherwise{
-                        printf("@lsu error load address!\n")
+                        //printf("@lsu error load address!\n")
                         io.exec_wb.bits.error.exeCode := EC_AdEL
                     }
                     io.exec_wb.bits.error.badVaddr := (r.imm.asTypeOf(SInt(32.W)) + r.rsData.asSInt()).asUInt()

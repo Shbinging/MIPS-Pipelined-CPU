@@ -28,7 +28,7 @@ class TLB extends Module{
         }
     }
     when(io.in.en){
-        printf(p"writing tlb ${io.in.index}")
+        //printf(p"writing tlb ${io.in.index}")
         tlb(io.in.index).hi := io.in.hi 
         tlb(io.in.index).lo_0 := io.in.lo_0 
         tlb(io.in.index).lo_1 := io.in.lo_1
@@ -43,13 +43,13 @@ class TLBTranslator extends Module{
         val resp = new TLBTranslatorResp
     })
     // FIX Page Size 4096 kB
-    printf("===CPU===\n")
+    //printf("===CPU===\n")
     for(i <- 1 to 1){//conf.tlb_size-1
-        printf(p"${i}: vpn ${io.tlb(i).hi.vpn2} asid: ${io.tlb(i).hi.asid}\n")
-        printf(p"p0, pfn ${io.tlb(i).lo_0.pfn} c ${io.tlb(i).lo_0.coherence} v ${io.tlb(i).lo_0.valid} d ${io.tlb(i).lo_0.dirty}\n")
-        printf(p"p1, pfn ${io.tlb(i).lo_1.pfn} c ${io.tlb(i).lo_1.coherence} v ${io.tlb(i).lo_1.valid} d ${io.tlb(i).lo_1.dirty}\n")
+      //  printf(p"${i}: vpn ${io.tlb(i).hi.vpn2} asid: ${io.tlb(i).hi.asid}\n")
+       // printf(p"p0, pfn ${io.tlb(i).lo_0.pfn} c ${io.tlb(i).lo_0.coherence} v ${io.tlb(i).lo_0.valid} d ${io.tlb(i).lo_0.dirty}\n")
+        //printf(p"p1, pfn ${io.tlb(i).lo_1.pfn} c ${io.tlb(i).lo_1.coherence} v ${io.tlb(i).lo_1.valid} d ${io.tlb(i).lo_1.dirty}\n")
     }
-    printf("=========\n")
+    //printf("=========\n")
 
     io.resp.exception := ET_None
     io.resp.pa := 0.U
@@ -85,12 +85,12 @@ class TLBTranslator extends Module{
                 }
                 io.resp.pa := Cat(entry.pfn(19, 0), io.req.va(11, 0))
                 found := true.B
-                printf(p"Found at ${i}: ${io.req.va}->${io.resp.pa}\n")
+                //printf(p"Found at ${i}: ${io.req.va}->${io.resp.pa}\n")
             }
         } 
 
         when(!found){
-            printf("not found\n")
+           // printf("not found\n")
             io.resp.exception := ET_TLB_REFILL
         }
     }

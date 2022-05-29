@@ -108,7 +108,7 @@ class L1Cache extends Module{
                 cache_cmd.en := false.B
             }
         } .otherwise{
-            printf("Unexpected Cache Command!\n")
+            //printf("Unexpected Cache Command!\n")
         }
     }
     when(state===1.U){  // cache hit

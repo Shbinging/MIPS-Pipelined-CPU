@@ -98,10 +98,15 @@ class WriteBack extends Module{
 
     io.commit := DontCare
     io.commit.commit := N
+  
     def isCauseWrite() = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_cause
     def isStatusWrite () = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_status
-    def getCauseValue() = Mux(isCauseWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
-    def getStatusValue() = Mux(isStatusWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Status_12), io.cp0_status)
+    def mergeStatus(a:UInt) = ((a & "b1111_1010_0111_1000_1111_1111_0001_0111".U) | (io.cp0_status.asUInt() & "b0000_0101_1000_0000_0000_0000_1110_0000".U)).asTypeOf(new cp0_Status_12)
+    def mergeCause(a:UInt) = ((a & "b0000_0000_1100_0000_0000_0011_0000_0000".U ).asUInt | (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)).asTypeOf(new cp0_Cause_13)
+    def getCauseValue1() = Mux(isCauseWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
+    def getStatusValue1() = Mux(isStatusWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Status_12), io.cp0_status)
+    def getStatusValue() = mergeStatus(getStatusValue1().asUInt())
+    def getCauseValue() = mergeCause(getCauseValue1().asUInt())
     def canInterupt(idx:UInt) = !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(idx).asBool() && getCauseValue().IP(idx).asBool()
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
@@ -110,7 +115,7 @@ class WriteBack extends Module{
         val cause_cur = WireInit(getCauseValue())
         val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
-        printf("@wb cause_cur %x\n", getCauseValue().asUInt())
+        printf("@wb cause_cur %x %x\n", getCauseValue().asUInt(), getCauseValue1().asUInt() & "b0000_0000_1100_0000_0000_0011_0000_0000".U)
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -119,24 +124,26 @@ class WriteBack extends Module{
         val exception = Wire(new exceptionInfo)
         exception := DontCare
         when(isSoftIntr0()){
-            exception.EPC := reg_pru_wb.current_pc
+            printf("@wb int0\n")
+            exception.EPC := reg_pru_wb.current_pc + 4.U
             exception.enable := Y
             exception.excType := ET_Int
             exception.exeCode := EC_Int
             io.commit.commit := Y
             io.commit.commit_instr := reg_pru_wb.current_instr
             io.commit.commit_pc := reg_pru_wb.current_pc
-            cause_cur.IP := io.cp0_cause.IP | 1.U
+            cause_cur.IP := getCauseValue().IP | 1.U
         }
         when(isSoftIntr1()){
-            exception.EPC := reg_pru_wb.current_pc
+            printf("@wb int1\n");
+            exception.EPC := reg_pru_wb.current_pc + 4.U
             exception.enable := Y
             exception.excType := ET_Int
             exception.exeCode := EC_Int
             io.commit.commit := Y
             io.commit.commit_instr := reg_pru_wb.current_instr
             io.commit.commit_pc := reg_pru_wb.current_pc
-            cause_cur.IP := io.cp0_cause.IP | 2.U
+            cause_cur.IP := getCauseValue().IP | 2.U
         }
         when((alu_wb_fire && reg_alu_wb.error.enable)){
             exception := reg_alu_wb.error
@@ -153,6 +160,7 @@ class WriteBack extends Module{
         }
         when((pru_wb_fire && reg_pru_wb.error.enable)){
             exception := reg_pru_wb.error
+            printf("@wb pru exception pc %x\n", reg_pru_wb.error.EPC)
             when(reg_pru_wb.needCommit){
                 printf("@wb pru commit_pc %x\n", reg_pru_wb.current_pc)
                 io.commit.commit := Y
@@ -168,8 +176,10 @@ class WriteBack extends Module{
         val vecOff = WireInit(0.U(32.W))
         when(io.cp0_status.EXL === 0.U){
                 io.out_epc_sel_0.en := Y
+                
                 when(isSlot){
                     io.out_epc_sel_0.data := exception.EPC - 4.U
+                    printf("@wb exception.epc %x epc %x\n", exception.EPC, io.out_epc_sel_0.data)
                     cause_cur.BD := 1.U
                 }.otherwise{
                     io.out_epc_sel_0.data := exception.EPC
@@ -186,6 +196,8 @@ class WriteBack extends Module{
         }.otherwise{
             printf(p"${reg_pru_wb.current_pc} ??? EXL, EXCTYPE :${exception.excType}\n")
             vecOff := 0x180.U
+            io.out_epc_sel_0.en := Y
+            io.out_epc_sel_0.data := exception.EPC
         }
         
         when(exception.excType === ET_ADDR_ERR){
@@ -223,8 +235,8 @@ class WriteBack extends Module{
         io.out_cause_sel_0.data := cause_cur.asUInt()
         io.out_status_sel_0.en := Y
         io.out_status_sel_0.data := status_cur.asUInt()
-        io.out_epc_sel_0.en := Y
-        io.out_epc_sel_0.data := exception.EPC
+        //io.out_epc_sel_0.en := Y
+        //io.out_epc_sel_0.data := exception.EPC
     }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
@@ -309,7 +321,7 @@ class WriteBack extends Module{
                     is(index_cp0_cause){
                         printf("@wb cp0_cause %x\n", reg_pru_wb.mft.data)
                         io.out_cause_sel_0.en := Y
-                        io.out_cause_sel_0.data := reg_pru_wb.mft.data
+                        io.out_cause_sel_0.data := mergeCause(reg_pru_wb.mft.data).asUInt//(reg_pru_wb.mft.data & "b0000_0000_1100_0000_0011_0000_0000".U )| (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)
                     }
                     is(index_cp0_epc){
                         io.out_epc_sel_0.en := Y
@@ -318,7 +330,7 @@ class WriteBack extends Module{
                     is(index_cp0_status){
                         printf(p"write to cp0 status ${reg_pru_wb.mft.data}")
                         io.out_status_sel_0.en := Y
-                        io.out_status_sel_0.data := reg_pru_wb.mft.data
+                        io.out_status_sel_0.data := mergeStatus(reg_pru_wb.mft.data).asUInt()
                     }
                     is(index_cp0_index){
                         io.out_index_sel_0.en := Y 
