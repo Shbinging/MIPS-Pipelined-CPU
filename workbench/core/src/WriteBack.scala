@@ -196,8 +196,8 @@ class WriteBack extends Module{
         }.otherwise{
             printf(p"${reg_pru_wb.current_pc} ??? EXL, EXCTYPE :${exception.excType}\n")
             vecOff := 0x180.U
-            io.out_epc_sel_0.en := Y
-            io.out_epc_sel_0.data := exception.EPC
+            // io.out_epc_sel_0.en := Y
+            // io.out_epc_sel_0.data := exception.EPC
         }
         
         when(exception.excType === ET_ADDR_ERR){

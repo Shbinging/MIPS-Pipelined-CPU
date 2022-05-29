@@ -559,7 +559,12 @@ class LSU extends Module{
                     except_reg.enable := true.B 
                     except_reg.EPC := r.current_pc
                     except_reg.badVaddr := read_reg.addr & (~3.U(32.W))
-                    except_reg.exeCode := EC_TLBL   // FIXME: what it should be
+                     when(io.dcache.resp.bits.exception === ET_TLB_Mod){
+                            except_reg.exeCode := EC_Mod
+                        }.otherwise{
+                        except_reg.exeCode := EC_TLBL
+                        }  
+                    //except_reg.exeCode := EC_TLBL   // FIXME: what it should be
                     except_reg.excType := io.dcache.resp.bits.exception
                 }
             	io.dcache.req.valid := false.B
@@ -632,7 +637,13 @@ class LSU extends Module{
                         except_reg.enable := true.B 
                         except_reg.EPC := r.current_pc
                         except_reg.badVaddr := write_reg.addr & (~3.U(32.W))
-                        except_reg.exeCode := EC_TLBS   // FIXME: what it should be
+                        printf("@lsu tlb store exception!")
+                        when(io.dcache.resp.bits.exception === ET_TLB_Mod){
+                            except_reg.exeCode := EC_Mod
+                        }.otherwise{
+                        except_reg.exeCode := EC_TLBS
+                        }   
+                        // FIXME: what it should be
                         except_reg.excType := io.dcache.resp.bits.exception
                     }
                     io.dcache.req.valid := false.B
