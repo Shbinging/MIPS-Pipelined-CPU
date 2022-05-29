@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import firrtl.options.DoNotTerminateOnExit
 
 class PRU extends Module{
     val io = IO(new Bundle{
@@ -11,60 +12,93 @@ class PRU extends Module{
         val flush = Input(Bool())
         val exec_wb = Decoupled(new PRU_WB)
 
-        val tag_lo = new UInt(data_width.W)
-        val tag_hi = new UInt(data_width.W)
+        val cp0_taglo = Input(UInt(conf.data_width.W))
+        val cp0_taghi = Input(UInt(conf.data_width.W))
         val icache_cmd = new CacheCommandIO
         val dcache_cmd = new CacheCommandIO
-
-        val tlb_entries = Output(Vec(conf.tlb_size, new TLBEntry))
+        
+        val cp0_index = Input(UInt(conf.data_width.W))
+        val cp0_random = Input(UInt(conf.data_width.W))
+        val cp0_entryhi = Input(new EntryHi)
+        val cp0_entrylo_0 = Input(new EntryLo)
+        val cp0_entrylo_1 = Input(new EntryLo)
+        val cp0_status = Input(new cp0_Status_12)
+        val cp0_cause = Input(new cp0_Cause_13)
+        val cp0_badAddr = Input(new cp0_BadVaddr_8)
+        val cp0_epc = Input(new cp0_Epc_14)
+        
+        val tlb_entries = Input(Vec(conf.tlb_size, new TLBEntry))
+        val tlb_wr = new TLBEntryIO
     })
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
     
     val r = RegEnable(io.isu_pru.bits, io.isu_pru.fire())
+    
     io.exec_wb.bits := DontCare
+    io.tlb_wr <> DontCare
+    io.dcache_cmd <> DontCare
+    io.icache_cmd <> DontCare
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
-    io.exec_wb.bits.error.enable := Y
+    io.exec_wb.bits.error.enable := N
     io.exec_wb.bits.needCommit := N
     io.exec_wb.bits.error.EPC := r.current_pc
 
     io.icache_cmd.en := false.B
     io.dcache_cmd.en := false.B
+    io.exec_wb.bits.eret.en := N
+    io.exec_wb.bits.mft.en := N
+    io.exec_wb.bits.tlbp.en := N
+    io.exec_wb.bits.tlbr.en := N
+
+    io.tlb_wr.en := false.B
     when(io.exec_wb.fire()){
         printf("@pru pru op is %d\n", r.pru_op)
     }
+   
     switch(r.pru_op){
+        is(PRU_RI_OP){
+            io.exec_wb.bits.error.enable := Y
+            io.exec_wb.bits.error.excType := ET_RI
+            io.exec_wb.bits.error.exeCode := EC_RI
+            io.exec_wb.bits.error.EPC := r.current_pc
+            io.exec_wb.bits.needCommit := Y
+        }
         is(PRU_SYSCALL_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Sys
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_BREAK_OP){
+            io.exec_wb.bits.error.enable := Y
             io.exec_wb.bits.error.excType := ET_Sys
             io.exec_wb.bits.error.exeCode := EC_Bp
-            when(io.exec_wb.fire()){
-                printf("break commit = 1\n")
-            }
+            io.exec_wb.bits.error.EPC := r.current_pc
             io.exec_wb.bits.needCommit := Y
         }
         is(PRU_EXCEPT_OP){
             io.exec_wb.bits.error <> r.except_info
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.current_pc := r.current_pc
+            io.exec_wb.bits.current_instr := r.current_instr
         }
         is(PRU_CACHE_OP){
-            //val address = r.rs_data + r.current_instr(15, 0).asSInt()
+            val address = (r.rs_data.asSInt() + r.current_instr(15, 0).asSInt()).asUInt()(31, 0)
             val target_cache = r.current_instr(17, 16)
             val operation = r.current_instr(20, 18)
             when(operation === "b010".U){
                 // assume it is only used for setup
-                printf(p"reset cache: tag lo${tag_lo}, tag hi${tag_hi}")
+                printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
             }
             when(target_cache === "b00".U){         // ICache
-                io.icache_cmd := true.B
+                io.icache_cmd.en := true.B
                 io.icache_cmd.addr := address 
                 io.icache_cmd.code := operation
             } .elsewhen(target_cache === "b01".U){  // DCache
-                io.dcache_cmd := true.B
+                io.dcache_cmd.en := true.B
                 io.dcache_cmd.addr := address 
                 io.dcache_cmd.code := operation
             } .elsewhen(target_cache === "b11".U){  // L2 Cache
@@ -74,8 +108,78 @@ class PRU extends Module{
             }
         }
         is(PRU_TLBP_OP){
-            val index = WireInit(f"h_8000_0000".U(data_width.W))
-
+            val index = WireInit(f"h_8000_0000".U(32.W))
+            for(i <- 0 to conf.tlb_size-1){
+                when((io.tlb_entries(i).hi.vpn2 === io.cp0_entryhi.vpn2) && (
+                        (io.tlb_entries(i).lo_0.global & io.tlb_entries(i).lo_1.global) ||
+                        (io.tlb_entries(i).hi.asid === io.cp0_entryhi.asid)
+                    )
+                ){
+                    index := i.U(32.W)
+                }
+            }
+            io.exec_wb.bits.tlbp.en := true.B 
+            io.exec_wb.bits.tlbp.index_data := index            
+        }
+        is(PRU_TLBR_OP){
+            io.exec_wb.bits.tlbr.en := true.B
+            io.exec_wb.bits.tlbr.entryhi := io.tlb_entries(io.cp0_index).hi 
+            io.exec_wb.bits.tlbr.entrylo_0 := io.tlb_entries(io.cp0_index).lo_0
+            io.exec_wb.bits.tlbr.entrylo_1 := io.tlb_entries(io.cp0_index).lo_1
+        }
+        is(PRU_TLBWI_OP){
+            io.tlb_wr.en := true.B 
+            io.tlb_wr.index := io.cp0_index
+            io.tlb_wr.hi := io.cp0_entryhi
+            io.tlb_wr.lo_0 := io.cp0_entrylo_0
+            io.tlb_wr.lo_1 := io.cp0_entrylo_1
+            when(io.cp0_entrylo_0.global=/=io.cp0_entrylo_1.global){
+                io.tlb_wr.lo_0.global := 0.U(1.W)
+                io.tlb_wr.lo_1.global := 0.U(1.W)
+            }
+        }
+        is(PRU_TLBWR_OP){
+            io.tlb_wr.en := true.B 
+            io.tlb_wr.index := io.cp0_random
+            io.tlb_wr.hi := io.cp0_entryhi
+            io.tlb_wr.lo_0 := io.cp0_entrylo_0
+            io.tlb_wr.lo_1 := io.cp0_entrylo_1
+        }
+        is(PRU_ERET_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.eret.en := Y
+            io.exec_wb.bits.eret.w_pc_addr := io.cp0_epc.epc
+        }
+        is(PRU_MFC0_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := N
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            //XXX:sel = 0
+           // printf("@pru r.rs_addr %d io.cp0_epc.asUInt %x\n", r.rs_addr, io.cp0_epc.epc)
+            io.exec_wb.bits.mft.data := MuxLookup(r.rs_addr, 0.U, Array(
+                index_cp0_index -> io.cp0_index.asUInt(),
+                index_cp0_random -> io.cp0_random.asUInt(),
+                index_cp0_entrylo0 -> io.cp0_entrylo_0.asUInt(),
+                index_cp0_entrylo1 -> io.cp0_entrylo_1.asUInt(),
+                index_cp0_badvaddr -> io.cp0_badAddr.asUInt(),
+                index_cp0_entryhi -> io.cp0_entryhi.asUInt(),
+                index_cp0_cause -> io.cp0_cause.asUInt(),
+                index_cp0_epc -> io.cp0_epc.epc,
+                index_cp0_status -> io.cp0_status.asUInt()
+            ))
+        }
+        is(PRU_MTC0_OP){
+            io.exec_wb.bits.needCommit := Y
+            io.exec_wb.bits.mft.en := Y
+            io.exec_wb.bits.mft.destSel := Y
+            io.exec_wb.bits.mft.destAddr := r.rd_addr
+            io.exec_wb.bits.mft.CP0Sel := r.rt_addr(2, 0)
+            printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
+            //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
+            io.exec_wb.bits.mft.data := r.rs_data
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {
@@ -432,9 +536,11 @@ class LSU extends Module{
                 // val tlb_req = Flipped(new TLBTranslatorReq)
                 // val tlb_resp = Flipped(new TLBTranslatorResp)
                 io.tlb_req.va := read_reg.addr & (~3.U(32.W))
+                printf(p"*!* ${io.tlb_req.va}\n")
                 io.tlb_req.ref_type := MX_RD
                 io.dcache.req.valid := true.B
                 io.dcache.req.bits.is_cached := io.tlb_resp.cached
+                printf(p"${r.current_pc} load from ${io.tlb_resp.pa}\n")
 				io.dcache.req.bits.addr := io.tlb_resp.pa // read_reg.addr & (~3.U(32.W))
                 io.dcache.req.bits.exception := io.tlb_resp.exception
 				io.dcache.req.bits.func := MX_RD
@@ -507,6 +613,7 @@ class LSU extends Module{
                     io.tlb_req.ref_type := MX_WR
                     io.dcache.req.valid := true.B
                     io.dcache.req.bits.is_cached := io.tlb_resp.cached
+                    printf(p" ${r.current_pc} store into ${io.tlb_resp.pa}\n")
 		    		io.dcache.req.bits.addr := io.tlb_resp.pa 
                     io.dcache.req.bits.exception := io.tlb_resp.exception
                     io.dcache.req.bits.data := write_reg.w_data << (write_reg.addr(1, 0) << 3.U)

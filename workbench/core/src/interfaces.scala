@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import java.util.spi.ResourceBundleProvider
 
 // // PC
 // class PCInput extends Bundle{
@@ -47,7 +48,7 @@ class GPRWriteInput extends Bundle{
 //     val vAddr = Input(UInt(32.W))
 // }
 
-class CP0WriteInput extends {
+class CP0WriteInput extends Bundle{
     val en = Input(Bool())
     val data = Input(UInt(32.W))
 }
@@ -85,6 +86,9 @@ class ID_ISU extends Bundle{
     val read1 = Output(UInt(REG_SZ.W))
     val read2 = Output(UInt(REG_SZ.W))
     val write = Output(UInt(REG_SZ.W))
+    val isRead1CP0 = Output(Bool())
+    val isRead2CP0 = Output(Bool())
+    val isWriteCP0 = Output(Bool())
     
     val rd_addr = Output(UInt(REG_SZ.W))
     val imm = Output(UInt(IMM_SZ.W))
@@ -157,12 +161,45 @@ class ISU_PRU extends Bundle{
     val pru_op = Output(UInt(4.W))
     val except_info = Output(new exceptionInfo)
     val rs_data = Output(UInt(conf.data_width.W))
+    val rs_addr = Output(UInt(5.W))
+    val rt_addr = Output(UInt(5.W))
+    val rd_addr = Output(UInt(5.W))
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
 }
 
+class PRU_WB_ERET extends Bundle{
+    val en = Bool()
+    val w_pc_addr = UInt()
+}
+
+class PRU_WB_MFT extends Bundle{
+    val en = Bool()
+    val destSel = Bool() //0 general 1 cp0
+    val destAddr = UInt(5.W)
+    val CP0Sel = UInt(3.W) //XXX:not use right now
+    val data = UInt(32.W)
+}
+
+class PRU_WB_TLBP extends Bundle{
+    val en = Bool()
+    val index_data = UInt(conf.data_width.W)
+}
+
+class PRU_WB_TLBR extends Bundle{
+  val en = Bool()
+  val entryhi = new EntryHi
+  val entrylo_0 = new EntryLo
+  val entrylo_1 = new EntryLo
+}
+
+
 class PRU_WB extends Bundle{
     val error = Output(new exceptionInfo)
+    val eret = Output(new PRU_WB_ERET)
+    val mft = Output(new PRU_WB_MFT)
+    val tlbp = Output(new PRU_WB_TLBP)
+    val tlbr = Output(new PRU_WB_TLBR)
     val current_pc = Output(UInt(conf.addr_width.W))
     val current_instr = Output(UInt(conf.data_width.W))
     val needCommit = Output(Bool())
@@ -242,8 +279,12 @@ class MultiplierIO extends Bundle {
   val data_dout = Input(UInt(66.W))
 }
 
-class WrTLB extends Bundle{
-  
+class TLBEntryIO extends Bundle{
+    val en = Output(Bool())
+    val index = Output(UInt(32.W))
+    val hi = Output(new EntryHi)
+    val lo_0 = Output(new EntryLo)
+    val lo_1 = Output(new EntryLo)
 }
 
 class TLBTranslatorReq extends Bundle{
@@ -298,9 +339,15 @@ class CacheIO extends Bundle{
 }
 
 class CacheCommandIO extends Bundle{
+<<<<<<< HEAD
   val en = Bool()
   val addr = UInt(conf.data_width.W)
   val code = UInt(3.W)
+=======
+  val en = Output(Bool())
+  val addr = Output(UInt(conf.data_width.W))
+  val code = Output(UInt(3.W))
+>>>>>>> de502443ca742f4f829fcaeafa46089bfe881009
 }
 
 
@@ -397,4 +444,10 @@ class cp0_Config_16 extends Bundle{
     val BE = UInt(1.W)
     val Impl = UInt(15.W)
     val M = UInt(1.W)
+}
+
+class cp0_Context_4 extends Bundle{
+    val PTEBase = UInt(9.W)
+    val BadVPN2 = UInt(19.W)
+    val Empty1 = UInt(4.W)
 }

@@ -6,6 +6,7 @@ import njumips.configs._
 import njumips.consts._
 import njumips.configs._
 import chisel3.experimental.IO
+import javax.management.MBeanRegistrationException
 
 // class ProgramCounter extends Module {
 //     val io = IO(new Bundle{
@@ -56,6 +57,9 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := regs(i).asUInt()
     }
+    // for( i<- 0 to 31){
+    //     printf(p"reg ${i}: ${regs(i)}\n")
+    // }
     // when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
     //     val newCause = WireInit(regs(32.U + 13.U).asTypeOf(new cp0_Cause_13))
     //     val newStatus = WireInit(regs(32.U + 12.U).asTypeOf(new cp0_Status_12))
@@ -95,51 +99,70 @@ class GPR extends Module {
 
 class CP0 extends Module{
     val io = IO(new Bundle{
+        val cp0_index = Output(UInt(conf.data_width.W))
+        val cp0_random = Output(UInt(conf.data_width.W))
         val cp0_entryhi = Output(new EntryHi)
         val cp0_status = Output(new cp0_Status_12)
         val cp0_cause = Output(new cp0_Cause_13)
-        val cp0_taglo = Output(new UInt(32.W))
-        val cp0_taghi = Output(new UInt(32.W))
+        val cp0_taglo = Output(UInt(32.W))
+        val cp0_taghi = Output(UInt(32.W))
         val cp0_badAddr = Output(new cp0_BadVaddr_8)
         val cp0_epc = Output(new cp0_Epc_14)
-
+        val cp0_context = Output(new cp0_Context_4)
+        val cp0_entrylo_0 = Output(new EntryLo)
+        val cp0_entrylo_1 = Output(new EntryLo)
+        
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
         val in_entrylo1_sel_0 = new CP0WriteInput
-
         val in_taglo_sel_0 = new CP0WriteInput
         val in_taghi_sel_0 = new CP0WriteInput
+        val in_cause_sel_0 = new CP0WriteInput
+        val in_status_sel_0 = new CP0WriteInput
+        val in_epc_sel_0 = new CP0WriteInput
+        val in_badAddr_sel_0 = new CP0WriteInput
+        val in_context_sel_0 = new CP0WriteInput
+        val in_entryhi_sel_0 = new CP0WriteInput
 
-        val cp0_write_in = new CP0WriteInputWB
+        
     })
-    val index_sel_0 = RegEnable(io.in_index_sel_0.data, io.in_index_sel_0.en)
+    val index_sel_0 = RegInit(0.U(conf.data_width.W)) 
     val random_sel_0 = RegEnable(io.in_random_sel_0.data, io.in_random_sel_0.en)
     val taglo_sel_0 = RegEnable(io.in_taglo_sel_0.data, io.in_taglo_sel_0.en)
     val taghi_sel_0 = RegEnable(io.in_taghi_sel_0.data, io.in_taghi_sel_0.en)   
         
     val baddAddr_sel_0 = RegInit(0.U(32.W))
+    val badAddr_sel_0 = RegInit(0.U(32.W))
     val cause_sel_0 = RegInit(0.U(32.W))
-    val status_sel_0 = RegInit(0.U(32.W))
+    val status_sel_0 = RegInit("h_1040_0000".U(32.W))
     val epc_sel_0 = RegInit(0.U(32.W))
+    val context_sel_0 = RegInit(0.U(32.W))
+    val entry_hi_sel_0 = RegEnable(io.in_entryhi_sel_0.data & "h_ffffe0ff".U(conf.data_width.W), io.in_entryhi_sel_0.en)
+    val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo0_sel_0.en)
+    val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo1_sel_0.en)
 
-    when(io.cp0_write_in.enableEXL || io.cp0_write_in.enableOther || io.cp0_write_in.enableVaddress){
-        val newCause = WireInit(cause_sel_0.asTypeOf(new cp0_Cause_13))
-        val newStatus = WireInit(status_sel_0.asTypeOf(new cp0_Status_12))
-        when(io.cp0_write_in.enableEXL){
-            newStatus.EXL := io.cp0_write_in.EXL
-        }
-        when(io.cp0_write_in.enableVaddress){
-            baddAddr_sel_0 := io.cp0_write_in.vAddr
-        }
-        when(io.cp0_write_in.enableOther){
-            newCause.ExcCode := io.cp0_write_in.ExcCode
-            newCause.BD := io.cp0_write_in.BD
-            status_sel_0 := newStatus.asUInt()
-            cause_sel_0 := newCause.asUInt()
-            epc_sel_0 := io.cp0_write_in.epc
-            printf("status %x\n", newStatus.asUInt())
-            printf("cause %x\n", newCause.asUInt())
-        }        
+    io.cp0_index := index_sel_0
+    io.cp0_random := random_sel_0
+    io.cp0_badAddr := badAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)
+    io.cp0_cause := cause_sel_0.asTypeOf(new cp0_Cause_13)
+    io.cp0_epc := epc_sel_0.asTypeOf(new cp0_Epc_14)
+    io.cp0_status := status_sel_0.asTypeOf(new cp0_Status_12)
+    io.cp0_context := context_sel_0.asTypeOf(new cp0_Context_4)
+    io.cp0_entryhi := entry_hi_sel_0.asTypeOf(new EntryHi)
+    io.cp0_entrylo_0 := entrylo_0_sel_0.asTypeOf(new EntryLo)
+    io.cp0_entrylo_1 := entrylo_1_sel_0.asTypeOf(new EntryLo)
+    io.cp0_taglo := taglo_sel_0
+    io.cp0_taghi := taghi_sel_0
+    printf("@cp0 cause %x\n", cause_sel_0)
+    when(io.in_cause_sel_0.en){
+        cause_sel_0 := io.in_cause_sel_0.data    
+    }
+    when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
+    when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}
+    when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
+    when (io.in_context_sel_0.en){context_sel_0 := io.in_context_sel_0.data}
+    when(io.in_index_sel_0.en){
+        index_sel_0 := Mux(io.in_index_sel_0.data==="h_8000_0000".U, io.in_index_sel_0.data, io.in_index_sel_0.data(log2Ceil(conf.tlb_size)-1, 0))
     }
 }

@@ -27,7 +27,7 @@ class InstrDecode extends Module{
     io.id_isu.bits.pcNext := if_id_reg.pcNext
     io.id_isu.bits.current_instr := if_id_reg.instr
     // rd_addr, shamt_rs_sel, imm_rt_sel, sign_ext, exu, op 
-    val decoded_instr = ListLookup(if_id_reg.instr, List(rd, RS_SEL, RT_SEL, ZERO_EXT_SEL, ALU_ID, ALU_ADD_OP, 0.U, 0.U, 0.U),
+    val decoded_instr = ListLookup(if_id_reg.instr, List(0.U, RS_SEL, RT_SEL, ZERO_EXT_SEL, PRU_ID, PRU_RI_OP, 0.U, 0.U, 0.U),
         Array(
             LUI  -> List(rt, RS_SEL, IMM_SEL, DontCare, ALU_ID, ALU_LUI_OP, rt, rs, 0.U), 
             ADD  -> List(rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, rd, rs, rt),
@@ -105,13 +105,19 @@ class InstrDecode extends Module{
             MADDU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MADDU_OP, 0.U, rs, rt),
             MSUB -> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUB_OP, 0.U, rs, rt),
             MSUBU-> List(DontCare, RS_SEL, RT_SEL, DontCare, MDU_ID, MDU_MSUBU_OP, 0.U, rs, rt),
-            MFC0 -> List(rt, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, rt, 32.U + rd, 0.U), // FIXME
-            MTC0 -> List(32.U + rd, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, 32.U + rd, rt, 0.U),  // FIXME
-            ERET -> List(DontCare, RS_SEL, DontCare, DontCare, BRU_ID, BRU_ERET_OP, 0.U, 32.U + 14.U, 0.U), // FIXME
-            SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), // FIXME syscall 翻译成addi $0, $0, 0
-            BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U), // FIXME
-            CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U) // FIXME
-            //TLBP -> List// 
+            
+            MFC0 -> List(rt, RS_SEL, RT_SEL, DontCare, PRU_ID, PRU_MFC0_OP, rt, rd, 0.U), 
+            MTC0 -> List(rd, RS_SEL, RT_SEL, DontCare, PRU_ID, PRU_MTC0_OP, rd, rt, if_id_reg.instr(2, 0)),  
+            ERET -> List(DontCare, RS_SEL, DontCare, DontCare, PRU_ID, PRU_ERET_OP, 0.U, 0.U, 0.U), 
+            SYSCALL -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_SYSCALL_OP, 0.U, 0.U, 0.U), 
+            BREAK -> List(0.U, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_BREAK_OP, 0.U, 0.U, 0.U), 
+            CACHE -> List(DontCare, RS_SEL, IMM_SEL, SIGN_EXT_SEL, PRU_ID, PRU_CACHE_OP, 0.U, rs, 0.U), // FIXME
+            TLBP -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBP_OP, 0.U, 0.U, 0.U),
+            TLBR -> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBR_OP, 0.U, 0.U, 0.U),
+            TLBWI-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWI_OP, 0.U, 0.U, 0.U),
+            TLBWR-> List(DontCare, DontCare, DontCare, DontCare, PRU_ID, PRU_TLBWR_OP, 0.U, 0.U, 0.U),
+            
+            PREF -> List(0.U, RS_SEL, RT_SEL, DontCare, ALU_ID, ALU_ADD_OP, 0.U, 0.U, 0.U),
             )
     )
     io.id_isu.bits.rd_addr := decoded_instr(0)
@@ -125,6 +131,13 @@ class InstrDecode extends Module{
     io.id_isu.bits.read2 := decoded_instr(8)
     io.id_isu.bits.except_info <> if_id_reg.except_info
     
+    val decode_cp0 = ListLookup(if_id_reg.instr, List(N, N, N), Array(
+        MFC0->List(N, Y, Y),
+        MTC0->List(Y, N, Y)
+    ))
+    io.id_isu.bits.isWriteCP0 := decode_cp0(0)
+    io.id_isu.bits.isRead1CP0 := decode_cp0(1)
+    io.id_isu.bits.isRead2CP0 := decode_cp0(2)
     when(if_id_reg.except_info.enable){
         io.id_isu.bits.exu := PRU_ID
         io.id_isu.bits.op := PRU_EXCEPT_OP

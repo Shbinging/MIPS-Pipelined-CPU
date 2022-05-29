@@ -6,6 +6,7 @@ import chisel3.util._
 import njumips.configs._
 import njumips.consts._
 import java.awt.MouseInfo
+import firrtl.options.DoNotTerminateOnExit
 
 
 
@@ -104,11 +105,49 @@ class verilator_top extends Module {
     write_back.io.mdu_wb <> mdu.io.exec_wb
     write_back.io.pru_wb <> pru.io.exec_wb
 
-    write_back.io.cp0_write_out <> cp0.io.cp0_write_in
+    //write_back.io.cp0_write_out <> cp0.io.cp0_write_in
     write_back.io.cp0_status := cp0.io.cp0_status
     write_back.io.cp0_cause := cp0.io.cp0_cause
+    write_back.io.cp0_context := cp0.io.cp0_context
+    write_back.io.cp0_entryhi := cp0.io.cp0_entryhi
+    write_back.io.cp0_status := cp0.io.cp0_status
 
     gprs.io.write_in <> write_back.io.gpr_wr
+
+    pru.io.cp0_taglo := cp0.io.cp0_taglo
+    pru.io.cp0_taghi := cp0.io.cp0_taghi
+    pru.io.cp0_index := cp0.io.cp0_index
+    pru.io.cp0_random := cp0.io.cp0_random
+    pru.io.cp0_entryhi := cp0.io.cp0_entryhi
+    pru.io.cp0_entrylo_0 := cp0.io.cp0_entrylo_0
+    pru.io.cp0_entrylo_1 := cp0.io.cp0_entrylo_1
+
+    pru.io.cp0_badAddr := cp0.io.cp0_badAddr
+    pru.io.cp0_cause := cp0.io.cp0_cause
+    pru.io.cp0_epc := cp0.io.cp0_epc
+    pru.io.cp0_status := cp0.io.cp0_status
+
+    pru.io.tlb_entries := tlb.io.entries
+    tlb.io.in := pru.io.tlb_wr
+
+    icache.io.cache_cmd := pru.io.icache_cmd
+    dcache.io.cache_cmd := pru.io.dcache_cmd
+
+    cp0.io.in_badAddr_sel_0 <> write_back.io.out_badAddr_sel_0
+    cp0.io.in_cause_sel_0 <> write_back.io.out_cause_sel_0
+    cp0.io.in_index_sel_0 := write_back.io.out_index_sel_0
+    cp0.io.in_random_sel_0 := DontCare // write_back.io.out_random_sel_0 
+    cp0.io.in_status_sel_0 := write_back.io.out_status_sel_0
+    cp0.io.in_epc_sel_0 := write_back.io.out_epc_sel_0
+    cp0.io.in_badAddr_sel_0 := write_back.io.out_badAddr_sel_0
+    cp0.io.in_context_sel_0 := write_back.io.out_context_sel_0
+    cp0.io.in_entryhi_sel_0 := write_back.io.out_entryhi_sel_0
+    cp0.io.in_entrylo0_sel_0 := write_back.io.out_entrylo0_sel_0
+    cp0.io.in_entrylo1_sel_0 := write_back.io.out_entrylo1_sel_0
+    cp0.io.in_taghi_sel_0.en := N 
+    cp0.io.in_taghi_sel_0.data <> DontCare
+    cp0.io.in_taglo_sel_0.en := N 
+    cp0.io.in_taglo_sel_0.data <> DontCare
     io.commit <> DontCare
     for(i <- 0 to 31){
         io.commit.gpr(i) := gprs.io.gpr_commit(i)

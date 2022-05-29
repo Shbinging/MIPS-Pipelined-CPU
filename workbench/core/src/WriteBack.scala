@@ -18,10 +18,51 @@ class WriteBack extends Module{
         val gpr_wr = Flipped(new GPRWriteInput)
         val cp0_status = Input(new cp0_Status_12)
         val cp0_cause = Input(new cp0_Cause_13)
-        val cp0_write_out = Flipped(new CP0WriteInputWB)
+        val cp0_context = Input(new cp0_Context_4)
+        val cp0_entryhi = Input(new EntryHi)
+
+
+        
+        val out_index_sel_0 = Flipped(new CP0WriteInput)
+        val out_cause_sel_0 = Flipped(new CP0WriteInput)
+        val out_status_sel_0 = Flipped(new CP0WriteInput)
+        val out_epc_sel_0 = Flipped(new CP0WriteInput)
+        val out_badAddr_sel_0 = Flipped(new CP0WriteInput)
+        val out_context_sel_0 = Flipped(new CP0WriteInput)
+        val out_entryhi_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo0_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo1_sel_0 = Flipped(new CP0WriteInput)
     })
     val time = RegInit(0.U(32.W))
-
+    io.out_cause_sel_0 <> DontCare
+    io.out_epc_sel_0 <> DontCare
+    io.out_status_sel_0 <> DontCare
+    io.out_badAddr_sel_0 <> DontCare
+    io.out_context_sel_0 <> DontCare
+    io.out_index_sel_0 <> DontCare
+    io.out_cause_sel_0 <> DontCare
+    io.out_status_sel_0 <> DontCare
+    io.out_epc_sel_0 <> DontCare
+    io.out_badAddr_sel_0 <> DontCare
+    io.out_context_sel_0 <> DontCare
+    io.out_entryhi_sel_0 <> DontCare
+    io.out_entrylo0_sel_0 <> DontCare
+    io.out_entrylo1_sel_0 <> DontCare
+    
+    io.out_cause_sel_0.en := N
+    io.out_epc_sel_0.en := N
+    io.out_status_sel_0.en := N
+    io.out_badAddr_sel_0.en := N
+    io.out_context_sel_0.en := N
+    io.out_index_sel_0.en := N
+    io.out_cause_sel_0.en := N
+    io.out_status_sel_0.en := N
+    io.out_epc_sel_0.en := N
+    io.out_badAddr_sel_0.en := N
+    io.out_context_sel_0.en := N
+    io.out_entryhi_sel_0.en := N
+    io.out_entrylo0_sel_0.en := N
+    io.out_entrylo1_sel_0.en := N
 
     io.alu_wb.ready := true.B
     io.bru_wb.ready := true.B
@@ -48,24 +89,28 @@ class WriteBack extends Module{
     io.gpr_wr.w_en := 0.U
     io.wb_if.bits.pc_w_data <> DontCare
     io.wb_if.bits.pc_w_en := false.B
-    io.cp0_write_out <> DontCare
+    
     val isBranch = RegEnable(io.bru_wb.bits.w_pc_en && io.bru_wb.fire(), N, io_fire)
     val isLastBranch = RegEnable(io.bru_wb.fire(), N, io_fire)
     val isSlot = RegNext(isLastBranch && io_fire, N)
     val needJump = RegNext(isBranch && io_fire, N)
     val isException = WireInit((alu_wb_fire && reg_alu_wb.error.enable) || (lsu_wb_fire && reg_lsu_wb.error.enable) || (mdu_wb_fire && reg_mdu_wb.error.enable) || (pru_wb_fire && reg_pru_wb.error.enable))
-    io.cp0_write_out.enableOther := N
-    io.cp0_write_out.enableEXL := N
+
     io.commit := DontCare
     io.commit.commit := N
-    when(isException){//exception
+    def isCauseWrite() = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_cause
+    def isStatusWrite () = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_status
+    def getCauseValue() = Mux(isCauseWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
+    def getStatusValue() = Mux(isStatusWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Status_12), io.cp0_status)
+    def canInterupt(idx:UInt) = !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(idx).asBool() && getCauseValue().IP(idx).asBool()
+    def isSoftIntr0() = canInterupt(0.U)
+    def isSoftIntr1() = canInterupt(1.U)
+    def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
+    when(isException || isSoftIntr()){//exception
+        val cause_cur = WireInit(getCauseValue())
+        val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
-        // when(pru_wb_fire && reg_pru_wb.needCommit){
-        //     printf("commit error!")
-        //     io.commit.commit := Y
-        //     io.commit.commit_instr := reg_pru_wb.current_instr
-        //     io.commit.commit_pc := reg_pru_wb.current_pc
-        // }
+        printf("@wb cause_cur %x\n", getCauseValue().asUInt())
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -73,6 +118,26 @@ class WriteBack extends Module{
         //TODO::exception fill
         val exception = Wire(new exceptionInfo)
         exception := DontCare
+        when(isSoftIntr0()){
+            exception.EPC := reg_pru_wb.current_pc
+            exception.enable := Y
+            exception.excType := ET_Int
+            exception.exeCode := EC_Int
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_pru_wb.current_instr
+            io.commit.commit_pc := reg_pru_wb.current_pc
+            cause_cur.IP := io.cp0_cause.IP | 1.U
+        }
+        when(isSoftIntr1()){
+            exception.EPC := reg_pru_wb.current_pc
+            exception.enable := Y
+            exception.excType := ET_Int
+            exception.exeCode := EC_Int
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_pru_wb.current_instr
+            io.commit.commit_pc := reg_pru_wb.current_pc
+            cause_cur.IP := io.cp0_cause.IP | 2.U
+        }
         when((alu_wb_fire && reg_alu_wb.error.enable)){
             exception := reg_alu_wb.error
             io.commit.commit := Y
@@ -89,26 +154,26 @@ class WriteBack extends Module{
         when((pru_wb_fire && reg_pru_wb.error.enable)){
             exception := reg_pru_wb.error
             when(reg_pru_wb.needCommit){
+                printf("@wb pru commit_pc %x\n", reg_pru_wb.current_pc)
                 io.commit.commit := Y
                 io.commit.commit_instr := reg_pru_wb.current_instr
                 io.commit.commit_pc := reg_pru_wb.current_pc
             }
         }
         
-        io.cp0_write_out.enableEXL := Y
-        io.cp0_write_out.enableOther := Y
+        
+
         // io.cp0_write_out.Cause := io.cp0_read_in.Cause
         // io.cp0_write_out.Status := io.cp0_read_in.Status
         val vecOff = WireInit(0.U(32.W))
         when(io.cp0_status.EXL === 0.U){
+                io.out_epc_sel_0.en := Y
                 when(isSlot){
-                    io.cp0_write_out.epc := exception.EPC - 4.U
-                    io.cp0_write_out.BD := 1.U
-                    // io.cp0_write_out.Cause.BD := 1.U
+                    io.out_epc_sel_0.data := exception.EPC - 4.U
+                    cause_cur.BD := 1.U
                 }.otherwise{
-                    io.cp0_write_out.epc := exception.EPC
-                    io.cp0_write_out.BD := 0.U 
-                    // io.cp0_write_out.Cause.BD := 0.U
+                    io.out_epc_sel_0.data := exception.EPC
+                    cause_cur.BD := 0.U
                 }
                 //TODO:: check type
                 when (exception.excType === ET_TLB_REFILL){
@@ -119,16 +184,34 @@ class WriteBack extends Module{
                     vecOff := 0x180.U
                 }
         }.otherwise{
+            printf(p"${reg_pru_wb.current_pc} ??? EXL, EXCTYPE :${exception.excType}\n")
             vecOff := 0x180.U
         }
-        io.cp0_write_out.enableVaddress := N
+        
         when(exception.excType === ET_ADDR_ERR){
-            io.cp0_write_out.enableVaddress := Y
-            io.cp0_write_out.vAddr := exception.badVaddr
+            io.out_badAddr_sel_0.en := Y
+            io.out_badAddr_sel_0.data := exception.badVaddr
         }
-        io.cp0_write_out.ExcCode := exception.exeCode
+        when(VecInit(ET_TLB_Inv, ET_TLB_Mod, ET_TLB_REFILL).contains(exception.excType)){
+            io.out_badAddr_sel_0.en := Y
+            io.out_badAddr_sel_0.data := exception.badVaddr
+
+            io.out_context_sel_0.en := Y
+            val context = WireInit(io.cp0_context)
+            context.BadVPN2 := exception.badVaddr >> 13
+            io.out_context_sel_0.data := context.asUInt()
+
+            io.out_entryhi_sel_0.en := Y
+            val entryhi = WireInit(io.cp0_entryhi)
+            entryhi.vpn2 := exception.badVaddr >> 13
+            io.out_entryhi_sel_0.data := entryhi.asUInt
+            //entryhi.asid := excep
+        }
+
+
+        cause_cur.ExcCode := exception.exeCode
         printf("@wb excCode %x vecOff %x\n", exception.exeCode, vecOff)
-        io.cp0_write_out.EXL := 1.U
+        status_cur.EXL := 1.U
         io.wb_if.bits.pc_w_en := Y
 
         when(io.cp0_status.BEV === 1.U){
@@ -136,19 +219,32 @@ class WriteBack extends Module{
         }.otherwise{
             io.wb_if.bits.pc_w_data := 0x80000000L.asUInt(32.W) + vecOff
         }
-        //io.wb_if.bits.pc_w_data :=  0xbfc00200L.asUInt(32.W) + vecOff
-    }.elsewhen(bru_wb_fire && reg_bru_wb.noSlot){//jump without delay(ERET)
+        io.out_cause_sel_0.en := Y
+        io.out_cause_sel_0.data := cause_cur.asUInt()
+        io.out_status_sel_0.en := Y
+        io.out_status_sel_0.data := status_cur.asUInt()
+        io.out_epc_sel_0.en := Y
+        io.out_epc_sel_0.data := exception.EPC
+    }.elsewhen(pru_wb_fire && reg_pru_wb.eret.en){//jump without delay(ERET)
         printf("@wb eret\n")
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
         needJump := N
-        io.cp0_write_out.enableEXL := Y
-        io.cp0_write_out.EXL := 0.U
-        io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
-        io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
-        io.commit.commit_pc := reg_bru_wb.current_pc
-        io.commit.commit_instr := reg_bru_wb.current_instr
+
+        io.wb_if.bits.pc_w_data := reg_pru_wb.eret.w_pc_addr
+        io.wb_if.bits.pc_w_en := Y
+        // XXX: is it correct? check the manual ERET 
+        when(io.cp0_status.ERL.asBool()){
+            io.out_status_sel_0.en := Y 
+            io.out_status_sel_0.data := io.cp0_status.asUInt & "h_ffff_fffb".U 
+        } .otherwise{
+            io.out_status_sel_0.en := Y 
+            io.out_status_sel_0.data := io.cp0_status.asUInt & "h_ffff_fffd".U
+        }
+
+        io.commit.commit_pc := reg_pru_wb.current_pc
+        io.commit.commit_instr := reg_pru_wb.current_instr
         io.commit.commit := true.B
     }.otherwise{
     when(needJump){
@@ -199,6 +295,68 @@ class WriteBack extends Module{
         io.commit.commit_instr := reg_mdu_wb.current_instr
         io.commit.commit := true.B
         printf("mdu wb %x\n", io.commit.commit_pc);
+    }.elsewhen(pru_wb_fire){
+        io.commit.commit_pc := reg_pru_wb.current_pc
+        io.commit.commit_instr := reg_pru_wb.current_instr
+        io.commit.commit := Y
+        when(reg_pru_wb.mft.en){
+            when(reg_pru_wb.mft.destSel){//cp0
+                switch(reg_pru_wb.mft.destAddr){
+                    is(index_cp0_badvaddr){
+                        io.out_badAddr_sel_0.en := Y
+                        io.out_badAddr_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_cause){
+                        printf("@wb cp0_cause %x\n", reg_pru_wb.mft.data)
+                        io.out_cause_sel_0.en := Y
+                        io.out_cause_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_epc){
+                        io.out_epc_sel_0.en := Y
+                        io.out_epc_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_status){
+                        printf(p"write to cp0 status ${reg_pru_wb.mft.data}")
+                        io.out_status_sel_0.en := Y
+                        io.out_status_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_index){
+                        io.out_index_sel_0.en := Y 
+                        io.out_index_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    // is(index_cp0_random){
+                    //     io.out_random_sel_0.en := Y 
+                    //     io.out_random_sel_0.data := reg_pru_wb.mft.data
+                    // }
+                    is(index_cp0_entrylo0){
+                        io.out_entrylo0_sel_0.en := Y 
+                        io.out_entrylo0_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_entrylo1){
+                        io.out_entrylo1_sel_0.en := Y 
+                        io.out_entrylo1_sel_0.data := reg_pru_wb.mft.data 
+                    }
+                    is(index_cp0_entryhi){
+                        io.out_entryhi_sel_0.en := Y 
+                        io.out_entryhi_sel_0.data := reg_pru_wb.mft.data
+                    }
+                }
+            }.otherwise{//to general
+                io.gpr_wr.w_en := "b1111".U
+                io.gpr_wr.data := reg_pru_wb.mft.data
+                io.gpr_wr.addr := reg_pru_wb.mft.destAddr
+            }
+        } .elsewhen(reg_pru_wb.tlbp.en){
+            io.out_index_sel_0.en := Y 
+            io.out_index_sel_0.data := reg_pru_wb.tlbp.index_data 
+        } .elsewhen(reg_pru_wb.tlbr.en){
+            io.out_entryhi_sel_0.en := Y 
+            io.out_entryhi_sel_0.data := reg_pru_wb.tlbr.entryhi.asUInt
+            io.out_entrylo0_sel_0.en := Y 
+            io.out_entrylo0_sel_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt
+            io.out_entrylo1_sel_0.en := Y 
+            io.out_entrylo1_sel_0.data := reg_pru_wb.tlbr.entrylo_1.asUInt
+        }
     }
     }
     printf("is commit %d\n", io.commit.commit)

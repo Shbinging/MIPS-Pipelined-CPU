@@ -32,7 +32,6 @@ trait CP0Consts {
   val ET_TLB_REFILL =   7.U(ET_WIDTH.W)
   val ET_TLB_Inv    =   8.U(ET_WIDTH.W)
   val ET_TLB_Mod    =   9.U(ET_WIDTH.W)
-  val ET_TLB_Miss   =  23.U(ET_WIDTH.W) // XXX
   val ET_CACHE_ERR  =  10.U(ET_WIDTH.W)
   val ET_BUS_ERR    =  11.U(ET_WIDTH.W)
   val ET_Ov         =  12.U(ET_WIDTH.W)
@@ -63,10 +62,15 @@ trait CP0Consts {
   val EC_Ov   = 12.U(EC_WIDTH.W)  // * Arithmetic overflow
   val EC_Tr   = 13.U(EC_WIDTH.W)  // * Trap
 
-  val cp0_status = 44.U(6.W)
-  val cp0_cause = 45.U(6.W)
-  val cp0_epc = 46.U(6.W)
-  val cp0_badvaddr = 40.U(6.W)
+  val index_cp0_index = 0.U(5.W)
+  val index_cp0_random = 1.U(5.W)
+  val index_cp0_entrylo0 = 2.U(5.W)
+  val index_cp0_entrylo1 = 3.U(5.W)
+  val index_cp0_badvaddr = 8.U(5.W)
+  val index_cp0_entryhi = 10.U(5.W)
+  val index_cp0_status = 12.U(5.W)
+  val index_cp0_cause = 13.U(5.W)
+  val index_cp0_epc = 14.U(5.W)
 }
 
 trait CacheConsts {
@@ -102,7 +106,7 @@ trait CacheConsts {
 }
 
 trait InstrConsts {
-  val REG_SZ    = 6;
+  val REG_SZ    = 5;
   val IMM_SZ    = 16;
   val SHAMT_SZ  = 5;
 }
@@ -220,8 +224,12 @@ trait ExecUnitIndices {
   val PRU_CACHE_OP = 3.U(OPCODE_WIDTH.W)
   val PRU_TLBP_OP  = 4.U(OPCODE_WIDTH.W)
   val PRU_TLBR_OP  = 5.U(OPCODE_WIDTH.W)
-  val PRU_TLBWI_OP = 5.U(OPCODE_WIDTH.W)
-  val PRU_TLBWR_OP = 5.U(OPCODE_WIDTH.W)
+  val PRU_TLBWI_OP = 6.U(OPCODE_WIDTH.W)
+  val PRU_TLBWR_OP = 7.U(OPCODE_WIDTH.W)
+  val PRU_MFC0_OP = 8.U(OPCODE_WIDTH.W)
+  val PRU_MTC0_OP = 9.U(OPCODE_WIDTH.W)
+  val PRU_ERET_OP = 10.U(OPCODE_WIDTH.W)
+  val PRU_RI_OP = 11.U(OPCODE_WIDTH.W)
 }
 
 trait InstrPattern {
@@ -314,6 +322,8 @@ trait InstrPattern {
   val TLBR  = BitPat("b01000010000000000000000000000001")
   val TLBWI = BitPat("b01000010000000000000000000000010")
   val TLBWR = BitPat("b01000010000000000000000000000110")
+
+  val PREF = BitPat("b11001100????????????????????????")
 }
 
 object consts extends InstrPattern
