@@ -171,7 +171,7 @@ class PRU extends Module{
                 index_cp0_cause -> io.cp0_cause.asUInt(),
                 index_cp0_epc -> io.cp0_epc.epc,
                 index_cp0_status -> io.cp0_status.asUInt(),
-                index_cp0_compare -> io.cp0_index,
+                index_cp0_compare -> io.cp0_compare,
                 index_cp0_count -> io.cp0_count
             ))
         }

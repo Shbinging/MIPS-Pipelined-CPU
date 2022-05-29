@@ -146,7 +146,7 @@ class CP0 extends Module{
     val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo0_sel_0.en)
     val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo1_sel_0.en)
     val count_sel_0 = RegInit(0.U(32.W))
-    val compare_sel_0 = RegInit(0.U(32.W))
+    val compare_sel_0 = RegInit(0xffff.U(32.W))
 
     io.cp0_index := index_sel_0
     io.cp0_random := random_sel_0
@@ -164,8 +164,10 @@ class CP0 extends Module{
     io.cp0_compare_0 := compare_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
 
-    //def isIrq7() = compare_sel_0 === count_sel_0
-    def isIrq7() = N
+    def isIrq7() = (compare_sel_0 === count_sel_0)
+    //printf("@cp0 %x %x\n", compare_sel_0, count_sel_0)
+    assert(!isIrq7())
+    //def isIrq7() = N
     when(io.in_cause_sel_0.en){
         cause_sel_0 := io.in_cause_sel_0.data & "b1000_0000_1100_0000_1111_1111_0111_1100".U
     }
@@ -176,13 +178,15 @@ class CP0 extends Module{
         }
         .otherwise{status_sel_0 := io.in_status_sel_0.data}
     }.otherwise{
-        status_sel_0 := status_sel_0 | "b1000_0000_0000_0000".U
+        when(isIrq7()){
+            status_sel_0 := status_sel_0 | "b1000_0000_0000_0000".U
+        }
     }
     
     when(isIrq7()){
         io.irq7 := Y
     }.otherwise{
-        io.irq7 := status_sel_0(15) === 1.U
+        io.irq7 := cause_sel_0(15) === 1.U
     }
 
 
