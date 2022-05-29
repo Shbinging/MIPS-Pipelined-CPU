@@ -67,6 +67,7 @@ class verilator_top extends Module {
     dcache.io.out.resp.bits <> mem.io.in.resp.bits 
     icache.io.out.resp.bits <> mem.io.in.resp.bits
 
+    val irq7 = RegNext(write_back.io.irq7)
     val commit = RegNext(write_back.io.commit)
     instr_fetch.io.flush := write_back.io.flush
     instr_decode.io.flush := write_back.io.flush 
@@ -163,6 +164,9 @@ class verilator_top extends Module {
     io.commit.pc := commit.commit_pc
     io.commit.valid := commit.commit
     io.commit.instr := commit.commit_instr
+    io.commit.cp0_count := cp0.io.cp0_count_0
+    printf("@top ip7 %d\n", io.commit.ip7)
+    io.commit.ip7 := irq7
 }
 
 

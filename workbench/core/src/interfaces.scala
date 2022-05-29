@@ -362,6 +362,7 @@ class CommitIO extends Bundle {
   val rd_idx = Output(UInt(REG_SZ.W))
   val wdata = Output(UInt(conf.xprlen.W))
   val wen = Output(Bool())
+  val cp0_count = Output(UInt(conf.xprlen.W))
 }
 
 // CP 0 

@@ -122,15 +122,21 @@ void DiffTop::noop_reset_ncycles(unsigned n) {
 		run_noop_one_cycle();
 		dut_ptr->reset = 0;
 	}
-
+    
 	this->noop_cycles = 0;
 }
 
 void DiffTop::run_nemu_one_instr() {
   /* launch timer interrupt */
-	napi_set_irq(7, dut_ptr->io_commit_ip7);
 	/* nemu executes one cycle */
+    napi_set_irq(7, dut_ptr->io_commit_ip7);
+
 	napi_exec(1);
+
+    if (dut_ptr->io_commit_ip7){
+        printf("%x\n", napi_get_pc());
+        fflush(stdout);
+    }
 }
 
 void DiffTop::noop_tame_nemu() {
