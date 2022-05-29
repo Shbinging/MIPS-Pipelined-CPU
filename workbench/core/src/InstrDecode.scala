@@ -14,7 +14,9 @@ class InstrDecode extends Module{
     val if_id_reg = RegEnable(next=io.if_id.bits, enable=io.if_id.fire())
     val if_id_reg_prepared = RegInit(false.B)
     io.if_id.ready := io.id_isu.ready || !if_id_reg_prepared
-
+    // when(io.if_id.fire()){
+    //     printf("@decode pc %x\n", io.if_id.bits.pcNext - 4.U)
+    // }
     val instr_op = if_id_reg.instr(31, 26)
     val funct = if_id_reg.instr(5, 0)
     val rs = if_id_reg.instr(25, 21)
