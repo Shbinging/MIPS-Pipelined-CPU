@@ -26,7 +26,9 @@ class PRU extends Module{
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_badAddr = Input(new cp0_BadVaddr_8)
         val cp0_epc = Input(new cp0_Epc_14)
-        
+        val cp0_compare = Input(UInt(conf.data_width.W))
+        val cp0_count = Input(UInt(conf.data_width.W))
+
         val tlb_entries = Input(Vec(conf.tlb_size, new TLBEntry))
         val tlb_wr = new TLBEntryIO
     })
@@ -168,7 +170,9 @@ class PRU extends Module{
                 index_cp0_entryhi -> io.cp0_entryhi.asUInt(),
                 index_cp0_cause -> io.cp0_cause.asUInt(),
                 index_cp0_epc -> io.cp0_epc.epc,
-                index_cp0_status -> io.cp0_status.asUInt()
+                index_cp0_status -> io.cp0_status.asUInt(),
+                index_cp0_compare -> io.cp0_index,
+                index_cp0_count -> io.cp0_count
             ))
         }
         is(PRU_MTC0_OP){

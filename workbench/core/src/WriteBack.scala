@@ -20,7 +20,9 @@ class WriteBack extends Module{
         val cp0_cause = Input(new cp0_Cause_13)
         val cp0_context = Input(new cp0_Context_4)
         val cp0_entryhi = Input(new EntryHi)
-
+        //val cp0_compare = Input(UInt(conf.data_width.W))
+        //val cp0_count = Input(UInt(conf.data_width.W))
+        val isIrq7 = Input(Bool())
 
         
         val out_index_sel_0 = Flipped(new CP0WriteInput)
@@ -32,6 +34,8 @@ class WriteBack extends Module{
         val out_entryhi_sel_0 = Flipped(new CP0WriteInput)
         val out_entrylo0_sel_0 = Flipped(new CP0WriteInput)
         val out_entrylo1_sel_0 = Flipped(new CP0WriteInput)
+        val out_compare_sel_0 = Flipped(new CP0WriteInput)
+        val out_count_sel_0 = Flipped(new CP0WriteInput)
     })
     val time = RegInit(0.U(32.W))
     io.out_cause_sel_0 <> DontCare
@@ -48,7 +52,8 @@ class WriteBack extends Module{
     io.out_entryhi_sel_0 <> DontCare
     io.out_entrylo0_sel_0 <> DontCare
     io.out_entrylo1_sel_0 <> DontCare
-    
+    io.out_compare_sel_0 <> DontCare
+    io.out_count_sel_0 <> DontCare
     io.out_cause_sel_0.en := N
     io.out_epc_sel_0.en := N
     io.out_status_sel_0.en := N
@@ -63,6 +68,8 @@ class WriteBack extends Module{
     io.out_entryhi_sel_0.en := N
     io.out_entrylo0_sel_0.en := N
     io.out_entrylo1_sel_0.en := N
+    io.out_count_sel_0 := N
+    io.out_compare_sel_0 := N
 
     io.alu_wb.ready := true.B
     io.bru_wb.ready := true.B
@@ -111,7 +118,8 @@ class WriteBack extends Module{
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
-    when(isException || isSoftIntr()){//exception
+    def isIrq7() = io.isIrq7
+    when(isException || isSoftIntr() || isIrq7()){//exception
         val cause_cur = WireInit(getCauseValue())
         val status_cur = WireInit(getStatusValue())
         printf("exception! \n")
@@ -123,6 +131,17 @@ class WriteBack extends Module{
         //TODO::exception fill
         val exception = Wire(new exceptionInfo)
         exception := DontCare
+        when(isIrq7()){
+            printf("@wb int0\n")
+            exception.EPC := reg_pru_wb.current_pc + 4.U
+            exception.enable := Y
+            exception.excType := ET_Int
+            exception.exeCode := EC_Int
+            io.commit.commit := Y
+            io.commit.commit_instr := reg_pru_wb.current_instr
+            io.commit.commit_pc := reg_pru_wb.current_pc
+            cause_cur.IP := getCauseValue().IP | 1.U
+        }
         when(isSoftIntr0()){
             printf("@wb int0\n")
             exception.EPC := reg_pru_wb.current_pc + 4.U
@@ -335,6 +354,14 @@ class WriteBack extends Module{
                     is(index_cp0_index){
                         io.out_index_sel_0.en := Y 
                         io.out_index_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_compare){
+                        io.out_compare_sel_0.en := Y
+                        io.out_compare_sel_0.data := reg_pru_wb.mft.data
+                    }
+                    is(index_cp0_count){
+                        io.out_count_sel_0.en := Y
+                        io.out_count_sel_0.data := reg_pru_wb.mft.data
                     }
                     // is(index_cp0_random){
                     //     io.out_random_sel_0.en := Y 

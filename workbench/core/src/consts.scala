@@ -71,6 +71,8 @@ trait CP0Consts {
   val index_cp0_status = 12.U(5.W)
   val index_cp0_cause = 13.U(5.W)
   val index_cp0_epc = 14.U(5.W)
+  val index_cp0_count = 9.U(5.W)
+  val index_cp0_compare = 11.U(5.W)
 }
 
 trait CacheConsts {

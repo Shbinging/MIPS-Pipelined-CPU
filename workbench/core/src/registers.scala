@@ -111,7 +111,10 @@ class CP0 extends Module{
         val cp0_context = Output(new cp0_Context_4)
         val cp0_entrylo_0 = Output(new EntryLo)
         val cp0_entrylo_1 = Output(new EntryLo)
-        
+        val cp0_compare_0 = Output(UInt(conf.data_width.W))
+        val cp0_count_0 = Output(UInt(conf.data_width.W))
+        val irq7 = Output(Bool())
+
         val in_index_sel_0 = new CP0WriteInput
         val in_random_sel_0 = new CP0WriteInput
         val in_entrylo0_sel_0 = new CP0WriteInput
@@ -124,7 +127,8 @@ class CP0 extends Module{
         val in_badAddr_sel_0 = new CP0WriteInput
         val in_context_sel_0 = new CP0WriteInput
         val in_entryhi_sel_0 = new CP0WriteInput
-
+        val in_cp0_compare_0 = new CP0WriteInput
+        val in_cp0_count_0 = new CP0WriteInput
         
     })
     val index_sel_0 = RegInit(0.U(conf.data_width.W)) 
@@ -141,6 +145,8 @@ class CP0 extends Module{
     val entry_hi_sel_0 = RegEnable(io.in_entryhi_sel_0.data & "h_ffffe0ff".U(conf.data_width.W), io.in_entryhi_sel_0.en)
     val entrylo_0_sel_0 = RegEnable(io.in_entrylo0_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo0_sel_0.en)
     val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo1_sel_0.en)
+    val count_sel_0 = RegInit(0.U(32.W))
+    val compare_sel_0 = RegInit(0.U(32.W))
 
     io.cp0_index := index_sel_0
     io.cp0_random := random_sel_0
@@ -154,15 +160,42 @@ class CP0 extends Module{
     io.cp0_entrylo_1 := entrylo_1_sel_0.asTypeOf(new EntryLo)
     io.cp0_taglo := taglo_sel_0
     io.cp0_taghi := taghi_sel_0
+    io.cp0_count_0 := count_sel_0
+    io.cp0_compare_0 := compare_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
+
+    def isIrq7() = compare_sel_0 === count_sel_0
     when(io.in_cause_sel_0.en){
         cause_sel_0 := io.in_cause_sel_0.data & "b1000_0000_1100_0000_1111_1111_0111_1100".U
     }
     when(io.in_epc_sel_0.en){epc_sel_0 := io.in_epc_sel_0.data}
-    when(io.in_status_sel_0.en){status_sel_0 := io.in_status_sel_0.data}
+    when(io.in_status_sel_0.en){
+        when(isIrq7()){
+            status_sel_0 := io.in_status_sel_0.data | "b1000_0000_0000_0000".U
+        }
+        .otherwise{status_sel_0 := io.in_status_sel_0.data}
+    }.otherwise{
+        status_sel_0 := status_sel_0 | "b1000_0000_0000_0000".U
+    }
+    
+    when(isIrq7()){
+        io.irq7 := Y
+    }.otherwise{
+        io.irq7 := status_sel_0(15) === 1.U
+    }
+
+
     when(io.in_badAddr_sel_0.en){badAddr_sel_0 := io.in_badAddr_sel_0.data}
     when (io.in_context_sel_0.en){context_sel_0 := io.in_context_sel_0.data}
     when(io.in_index_sel_0.en){
         index_sel_0 := Mux(io.in_index_sel_0.data==="h_8000_0000".U, io.in_index_sel_0.data, io.in_index_sel_0.data(log2Ceil(conf.tlb_size)-1, 0))
+    }
+    when(io.in_cp0_count_0.en){
+        count_sel_0 := io.in_cp0_count_0.data
+    }.otherwise{
+        count_sel_0 := count_sel_0 + 1.U
+    }
+    when(io.in_cp0_compare_0.en){
+        compare_sel_0 := io.in_cp0_compare_0.data
     }
 }
