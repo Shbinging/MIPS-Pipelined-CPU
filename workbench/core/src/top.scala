@@ -35,12 +35,14 @@ class verilator_top extends Module {
     val dcache = Module(new L1Cache)
     
     val mdu = Module(new MDU)
+    val pru = Module(new PRU)
 
     val write_back = Module(new WriteBack)
 
     val tlb = Module(new TLB)
     val i_tlb_translator = Module(new TLBTranslator)
     val d_tlb_translator = Module(new TLBTranslator)
+    val pru_tlb_translator = Module(new TLBTranslator)
     i_tlb_translator.io.tlb <> tlb.io.entries
     i_tlb_translator.io.req <> instr_fetch.io.tlb_req
     instr_fetch.io.tlb_resp <> i_tlb_translator.io.resp
@@ -52,11 +54,15 @@ class verilator_top extends Module {
     lsu.io.tlb_resp <> d_tlb_translator.io.resp
     d_tlb_translator.io.asid := cp0.io.cp0_entryhi.asid
 
+    pru_tlb_translator.io.tlb <> tlb.io.entries 
+    pru_tlb_translator.io.req <> pru.io.tlb_req
+    pru.io.tlb_resp <> pru_tlb_translator.io.resp
+    pru_tlb_translator.io.asid := cp0.io.cp0_entryhi.asid
+
     val mem_arbiter = Module(new Arbiter(new MemReq, 2))
     val mem = Module(new SimDev)
     val arbit_chosen = RegEnable(enable=mem.io.in.req.fire(), next=mem_arbiter.io.chosen)
 
-    val pru = Module(new PRU)
     mem.io.clock := clock 
     mem.io.reset := reset.asBool()
     mem_arbiter.io.in <> VecInit(icache.io.out.req, dcache.io.out.req)

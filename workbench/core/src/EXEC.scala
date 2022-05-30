@@ -30,6 +30,8 @@ class PRU extends Module{
         val cp0_count = Input(UInt(conf.data_width.W))
 
         val tlb_entries = Input(Vec(conf.tlb_size, new TLBEntry))
+        val tlb_req = Flipped(new TLBTranslatorReq)
+        val tlb_resp = Flipped(new TLBTranslatorResp)
         val tlb_wr = new TLBEntryIO
     })
     val isu_pru_prepared = RegInit(N)
@@ -41,6 +43,7 @@ class PRU extends Module{
     io.tlb_wr <> DontCare
     io.dcache_cmd <> DontCare
     io.icache_cmd <> DontCare
+    io.tlb_req <> DontCare
     io.exec_wb.bits.current_pc := r.current_pc
     io.exec_wb.bits.current_instr := r.current_instr
     io.exec_wb.bits.error.enable := N
@@ -95,14 +98,44 @@ class PRU extends Module{
                 // assume it is only used for setup
                 //printf(p"reset cache: tag lo${io.cp0_taglo}, tag hi${io.cp0_taghi}")
             }
+            io.tlb_req.va := address
+            io.tlb_req.ref_type := MX_RD
             when(target_cache === "b00".U){         // ICache
-                io.icache_cmd.en := true.B
-                io.icache_cmd.addr := address 
-                io.icache_cmd.code := operation
+                when(operation(2)===0.U){    // index
+                    io.icache_cmd.en := true.B
+                    io.icache_cmd.addr := address 
+                    io.icache_cmd.code := operation
+                } .otherwise{
+                    when(io.tlb_resp.exception === ET_None){
+                        io.icache_cmd.en := true.B
+                        io.icache_cmd.addr := io.tlb_resp.pa
+                        io.icache_cmd.code := operation
+                    } .otherwise{
+                        io.exec_wb.bits.error.enable := Y
+                        io.exec_wb.bits.error.excType := io.tlb_resp.exception
+                        io.exec_wb.bits.error.exeCode := EC_TLBL
+                        io.exec_wb.bits.error.EPC := r.current_pc
+                        io.exec_wb.bits.needCommit := N
+                    }
+                }
             } .elsewhen(target_cache === "b01".U){  // DCache
-                io.dcache_cmd.en := true.B
-                io.dcache_cmd.addr := address 
-                io.dcache_cmd.code := operation
+                when(operation(2)===0.U){    // index
+                    io.dcache_cmd.en := true.B
+                    io.dcache_cmd.addr := address 
+                    io.dcache_cmd.code := operation
+                } .otherwise{
+                    when(io.tlb_resp.exception === ET_None){
+                        io.dcache_cmd.en := true.B
+                        io.dcache_cmd.addr := io.tlb_resp.pa
+                        io.dcache_cmd.code := operation
+                    } .otherwise{
+                        io.exec_wb.bits.error.enable := Y
+                        io.exec_wb.bits.error.excType := io.tlb_resp.exception
+                        io.exec_wb.bits.error.exeCode := EC_TLBL
+                        io.exec_wb.bits.error.EPC := r.current_pc
+                        io.exec_wb.bits.needCommit := N
+                    }
+                }
             } .elsewhen(target_cache === "b11".U){  // L2 Cache
                 //printf("L2 Cache Command, ignore it.\n")
             } .otherwise{

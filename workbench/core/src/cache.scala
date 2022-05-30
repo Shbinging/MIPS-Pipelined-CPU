@@ -28,7 +28,7 @@ class L1Cache extends Module{
 
 
     when(reset.asBool()){
-        for(i <- 0 to (1<<conf.cache_line_width)-1){
+        for(i <- 0 to (1<<conf.L1_index_width)-1){
             cache(i).valid := false.B 
             cache(i).dirty := false.B
         }
@@ -82,7 +82,7 @@ class L1Cache extends Module{
                 cache_cmd.en := false.B
             }
         } .elsewhen(cache_cmd.code==="b010".U){ // reset
-            for(i <- 0 to (1<<conf.cache_line_width)-1){
+            for(i <- 0 to (1<<conf.L1_index_width)-1){
                 cache(i).valid := false.B 
                 cache(i).dirty := false.B
             }
@@ -97,9 +97,17 @@ class L1Cache extends Module{
         } .elsewhen(cache_cmd.code==="b101".U){
             val tag = cache_cmd.addr(conf.addr_width-1, conf.cache_line_width)
             val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
+            printf(p"${conf.L1_index_width}, ${conf.cache_line_width}\n")
+            printf("write back %x, tag is %x, idx is %x\n", cache_cmd.addr, tag, idx)
+            for(i <- 0 to 31){
+                printf(p"idx ${i}:")
+                printf("tag %x\n", cache(i).tag)
+            }
             when(cache(idx).valid && cache(idx).tag===tag){
+                printf("write back ! %x\n", cache_cmd.addr)
                 when(cache(idx).dirty){
                     state := 6.U
+                    printf("write back dirty! %x\n", cache_cmd.addr)
                 } .otherwise{
                     cache(idx).valid := false.B 
                     cache_cmd.en := false.B
