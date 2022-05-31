@@ -207,5 +207,8 @@ class CP0 extends Module{
     }
     when(io.in_cp0_compare_0.en){
         compare_sel_0 := io.in_cp0_compare_0.data
+        cause_sel_0 := cause_sel_0 & "h7fff_7fff".U
     }
+    printf("@cp0 count is %x\n", count_sel_0)
+    printf("@cp0 compare is %x\n", compare_sel_0)
 }

@@ -16,7 +16,7 @@ object conf {
   val mul_stages = 7
   val div_stages = 45
   val random_delay = false
-  val cache_line_width = 4
+  val cache_line_width = 6
   val cache_line_size = 8 * (1<<cache_line_width) // 16 Bytes
   val L1_index_width = 5 // 64 lines
   val L1_cache_size = (1<<L1_index_width) * cache_line_size // 16KB
