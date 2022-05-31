@@ -124,7 +124,7 @@ class WriteBack extends Module{
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
-    def isIrq7() = (alu_wb_fire || pru_wb_fire || mdu_wb_fire || bru_wb_fire || lsu_wb_fire) && io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
+    def isIrq7() = !isException && (alu_wb_fire || pru_wb_fire || mdu_wb_fire || bru_wb_fire || lsu_wb_fire) && io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
 
     io.irq7 := io.isIrq7
     printf("@wb isirq7 %d\n", isIrq7())

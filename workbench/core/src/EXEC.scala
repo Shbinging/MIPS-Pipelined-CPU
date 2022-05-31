@@ -291,6 +291,7 @@ class PRU extends Module{
                         io.out_cause_sel_0.en := canWrite()
                         io.out_cause_sel_0.data := io.cp0_cause.asUInt & "h7fff_7fff".U
                         io.out_compare_sel_0.en := canWrite()
+                        printf("@pru write compare en %d data %x\n", canWrite(), r.rs_data)
                         io.out_compare_sel_0.data := r.rs_data
                     }
                     is(index_cp0_count){

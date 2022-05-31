@@ -240,7 +240,7 @@ class CP0 extends Module{
     }
 
     when(io.inp_cp0_compare_0.en){
-        compare_sel_0 := io.in_cp0_compare_0.data
+        compare_sel_0 := io.inp_cp0_compare_0.data
     }
     printf("@cp0 count is %x\n", count_sel_0)
     printf("@cp0 compare is %x %d\n", compare_sel_0, isIrq7())
