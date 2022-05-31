@@ -124,7 +124,8 @@ class WriteBack extends Module{
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
-    def isIrq7() = !isException && (alu_wb_fire || pru_wb_fire || mdu_wb_fire || bru_wb_fire || lsu_wb_fire) && io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
+    def ismtCom() = pru_wb_fire && reg_pru_wb.mft.en && reg_pru_wb.mft.destSel && reg_pru_wb.mft.destAddr === index_cp0_compare
+    def isIrq7() = !ismtCom() && !isException && (alu_wb_fire || pru_wb_fire || mdu_wb_fire || bru_wb_fire || lsu_wb_fire) && io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
 
     io.irq7 := io.isIrq7
     printf("@wb isirq7 %d\n", isIrq7())
@@ -148,7 +149,7 @@ class WriteBack extends Module{
         current_pc := reg_bru_wb.current_pc
     }
     when(needJump){
-        current_pc:= reg_bru_wb.w_pc_addr
+        current_pc:= reg_bru_wb.w_pc_addr - 4.U
     }
     when(isException || isSoftIntr() || isIrq7()){//exception
         val cause_cur = WireInit(getCauseValue())
@@ -164,7 +165,11 @@ class WriteBack extends Module{
         exception := DontCare
         when(isIrq7()){
             printf("@wb irq7 epc is %x\n", current_pc)
-            exception.EPC := current_pc + 4.U
+            // when(bru_wb_fire){
+            //     exception.EPC := current_pc
+            // }.otherwise{
+                exception.EPC := current_pc + 4.U
+            //}
             exception.enable := Y
             exception.excType := ET_Int
             exception.exeCode := EC_Int
@@ -224,7 +229,7 @@ class WriteBack extends Module{
         when(io.cp0_status.EXL === 0.U){
                 io.out_epc_sel_0.en := Y
                 
-                when(isSlot){
+                when((isSlot && !isIrq7()) || (isIrq7() && bru_wb_fire)){
                     io.out_epc_sel_0.data := exception.EPC - 4.U
                     //printf("@wb exception.epc %x epc %x\n", exception.EPC, io.out_epc_sel_0.data)
                     cause_cur.BD := 1.U
@@ -309,6 +314,7 @@ class WriteBack extends Module{
     when(needJump){
         io.flush := Y
         io.wb_if.bits.pc_w_data := reg_bru_wb.w_pc_addr
+        printf("@wb jump to %x! \n", io.wb_if.bits.pc_w_data)
         io.wb_if.bits.pc_w_en := reg_bru_wb.w_pc_en
         io.wb_if.valid := Y
     }.otherwise{
@@ -427,6 +433,9 @@ class WriteBack extends Module{
             io.out_entrylo1_sel_0.data := reg_pru_wb.tlbr.entrylo_1.asUInt  & "h_03ff_ffff".U(conf.data_width.W)
         }
     }
+    }
+    when(io.flush){
+        printf("@wb flush!\n")
     }
     printf("is commit %d\n", io.commit.commit)
     //  when(io.wb_if.valid){

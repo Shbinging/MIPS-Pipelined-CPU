@@ -57,6 +57,7 @@ class GPR extends Module {
     for( i <- 0 to 31){
         io.gpr_commit(i) := regs(i).asUInt()
     }
+    printf("@reg ra %x\n", io.gpr_commit(31))
     // for( i<- 0 to 31){
     //     printf(p"reg ${i}: ${regs(i)}\n")
     // }
@@ -179,7 +180,6 @@ class CP0 extends Module{
     io.cp0_count_0 := count_sel_0
     io.cp0_compare_0 := compare_sel_0
     printf("@cp0 cause %x\n", cause_sel_0)
-
     
     //printf("@cp0 %x %x\n", compare_sel_0, count_sel_0)
     //assert(!isIrq7())
