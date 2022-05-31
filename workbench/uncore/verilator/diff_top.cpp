@@ -237,12 +237,12 @@ void DiffTop::device_io(int addr, int len, int data,
 	assert((addr & 3) == 0);
 	// printf("IO: 0x%x %s\n", addr, func==MX_RD?"read":"write");
 	/* mmio */
-	if (!(0 <= addr && addr < 0x08000000)) {
+    if (!(0 <= addr && addr < 0x08000000)) {
 		/* deal with dev_io */
 		if (func == MX_RD) {
 			if (napi_addr_is_valid(addr)) {
 			*resp = napi_mmio_peek(addr, len + 1);
-			} else {
+            } else {
 			napi_dump_states();
 			eprintf(
 				"bad addr 0x%08x received from SOC\n", addr);

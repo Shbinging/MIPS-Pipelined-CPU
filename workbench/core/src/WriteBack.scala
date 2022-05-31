@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import njumips.configs._
 import njumips.consts._
+import firrtl.options.DoNotTerminateOnExit
 
 class WriteBack extends Module{
     val io = IO(new Bundle{
@@ -120,11 +121,32 @@ class WriteBack extends Module{
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
     def isSoftIntr() = pru_wb_fire && (isSoftIntr0() || isSoftIntr1()) && !isException
-    def isIrq7() = io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
+    def isIrq7() = (alu_wb_fire || pru_wb_fire || mdu_wb_fire || bru_wb_fire || lsu_wb_fire) && io.isIrq7 && !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(7.U).asBool() 
 
-    io.irq7 := isIrq7()
+    io.irq7 := io.isIrq7
     printf("@wb isirq7 %d\n", isIrq7())
     def isEret() = pru_wb_fire && reg_pru_wb.eret.en
+
+    val current_pc = Wire(UInt(32.W))
+    current_pc := DontCare
+    when(alu_wb_fire){
+        current_pc := reg_alu_wb.current_pc
+    }
+    when(lsu_wb_fire){
+        current_pc := reg_lsu_wb.current_pc
+    }
+    when(pru_wb_fire){
+        current_pc := reg_pru_wb.current_pc
+    }
+    when(mdu_wb_fire){
+        current_pc := reg_mdu_wb.current_pc
+    }
+    when(bru_wb_fire){
+        current_pc := reg_bru_wb.current_pc
+    }
+    when(needJump){
+        current_pc:= reg_bru_wb.w_pc_addr
+    }
     when(isException || isSoftIntr() || isIrq7()){//exception
         val cause_cur = WireInit(getCauseValue())
         val status_cur = WireInit(getStatusValue())
@@ -138,8 +160,8 @@ class WriteBack extends Module{
         val exception = Wire(new exceptionInfo)
         exception := DontCare
         when(isIrq7()){
-            printf("@wb irq7\n")
-            exception.EPC := reg_pru_wb.current_pc + 4.U
+            printf("@wb irq7 epc is %x\n", current_pc)
+            exception.EPC := current_pc + 4.U
             exception.enable := Y
             exception.excType := ET_Int
             exception.exeCode := EC_Int

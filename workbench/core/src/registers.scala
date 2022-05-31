@@ -147,7 +147,7 @@ class CP0 extends Module{
     val entrylo_1_sel_0 = RegEnable(io.in_entrylo1_sel_0.data & "h_03ff_ffff".U(conf.data_width.W), io.in_entrylo1_sel_0.en)
     val count_sel_0 = RegInit(0.U(32.W))
     val compare_sel_0 = RegInit(0xffff.U(32.W))
-
+    //assert(count_sel_0 =/= 0x47d2.U)
     io.cp0_index := index_sel_0
     io.cp0_random := random_sel_0
     io.cp0_badAddr := badAddr_sel_0.asTypeOf(new cp0_BadVaddr_8)

@@ -651,6 +651,7 @@ class LSU extends Module{
 				    back_reg.w_data := write_reg.w_data
 				    state_reg := LSU_BACK
 			    }.otherwise{
+                    printf("@lsu write addr is %x at pc %x\n", write_reg.addr & (~3.U(32.W)), r.current_pc)
                     io.tlb_req.va := write_reg.addr & (~3.U(32.W))
                     io.tlb_req.ref_type := MX_WR
                     io.dcache.req.valid := true.B
