@@ -33,7 +33,53 @@ class PRU extends Module{
         val tlb_req = Flipped(new TLBTranslatorReq)
         val tlb_resp = Flipped(new TLBTranslatorResp)
         val tlb_wr = new TLBEntryIO
+
+
+        val out_index_sel_0 = Flipped(new CP0WriteInput)
+        val out_cause_sel_0 = Flipped(new CP0WriteInput)
+        val out_status_sel_0 = Flipped(new CP0WriteInput)
+        val out_epc_sel_0 = Flipped(new CP0WriteInput)
+        val out_badAddr_sel_0 = Flipped(new CP0WriteInput)
+        val out_context_sel_0 = Flipped(new CP0WriteInput)
+        val out_entryhi_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo0_sel_0 = Flipped(new CP0WriteInput)
+        val out_entrylo1_sel_0 = Flipped(new CP0WriteInput)
+        val out_compare_sel_0 = Flipped(new CP0WriteInput)
+        val out_count_sel_0 = Flipped(new CP0WriteInput)
     })
+    io.out_cause_sel_0 <> DontCare
+    io.out_epc_sel_0 <> DontCare
+    io.out_status_sel_0 <> DontCare
+    io.out_badAddr_sel_0 <> DontCare
+    io.out_context_sel_0 <> DontCare
+    io.out_index_sel_0 <> DontCare
+    io.out_cause_sel_0 <> DontCare
+    io.out_status_sel_0 <> DontCare
+    io.out_epc_sel_0 <> DontCare
+    io.out_badAddr_sel_0 <> DontCare
+    io.out_context_sel_0 <> DontCare
+    io.out_entryhi_sel_0 <> DontCare
+    io.out_entrylo0_sel_0 <> DontCare
+    io.out_entrylo1_sel_0 <> DontCare
+    io.out_compare_sel_0 <> DontCare
+    io.out_count_sel_0 <> DontCare
+    io.out_cause_sel_0.en := N
+    io.out_epc_sel_0.en := N
+    io.out_status_sel_0.en := N
+    io.out_badAddr_sel_0.en := N
+    io.out_context_sel_0.en := N
+    io.out_index_sel_0.en := N
+    io.out_cause_sel_0.en := N
+    io.out_status_sel_0.en := N
+    io.out_epc_sel_0.en := N
+    io.out_badAddr_sel_0.en := N
+    io.out_context_sel_0.en := N
+    io.out_entryhi_sel_0.en := N
+    io.out_entrylo0_sel_0.en := N
+    io.out_entrylo1_sel_0.en := N
+    io.out_count_sel_0.en := N
+    io.out_compare_sel_0.en := N
+
     val isu_pru_prepared = RegInit(N)
     io.isu_pru.ready := io.exec_wb.fire() || !isu_pru_prepared
     
@@ -61,7 +107,7 @@ class PRU extends Module{
     when(io.exec_wb.fire()){
         //printf("@pru pru op is %d\n", r.pru_op)
     }
-   
+    
     switch(r.pru_op){
         is(PRU_RI_OP){
             io.exec_wb.bits.error.enable := Y
@@ -217,6 +263,53 @@ class PRU extends Module{
             //printf("@pru destAddr %d data %x\n", r.rd_addr, r.rs_data)
             //assert(io.exec_wb.bits.mft.CP0Sel === 0.U)
             io.exec_wb.bits.mft.data := r.rs_data
+            def mergeStatus(a:UInt) = ((a & "b1111_1010_0111_1000_1111_1111_0001_0111".U) | (io.cp0_status.asUInt() & "b0000_0101_1000_0000_0000_0000_1110_0000".U)).asTypeOf(new cp0_Status_12)
+            def mergeCause(a:UInt) = ((a & "b0000_0000_1100_0000_0000_0011_0000_0000".U ).asUInt | (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)).asTypeOf(new cp0_Cause_13)
+            def canWrite() = !io.flush && isu_pru_prepared
+            switch(r.rd_addr){
+                    is(index_cp0_badvaddr){
+                        io.out_badAddr_sel_0.en := canWrite()
+                        io.out_badAddr_sel_0.data := r.rs_data
+                    }
+                    is(index_cp0_cause){
+                        io.out_cause_sel_0.en := canWrite()
+                        io.out_cause_sel_0.data := mergeCause(r.rs_data).asUInt//(reg_pru_wb.mft.data & "b0000_0000_1100_0000_0011_0000_0000".U )| (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)
+                    }
+                    is(index_cp0_epc){
+                        io.out_epc_sel_0.en := canWrite()
+                        io.out_epc_sel_0.data := r.rs_data
+                    }
+                    is(index_cp0_status){
+                        io.out_status_sel_0.en := canWrite()
+                        io.out_status_sel_0.data := mergeStatus(r.rs_data).asUInt()
+                    }
+                    is(index_cp0_index){
+                        io.out_index_sel_0.en := canWrite() 
+                        io.out_index_sel_0.data := r.rs_data
+                    }
+                    is(index_cp0_compare){
+                        io.out_cause_sel_0.en := canWrite()
+                        io.out_cause_sel_0.data := io.cp0_cause.asUInt & "h7fff_7fff".U
+                        io.out_compare_sel_0.en := canWrite()
+                        io.out_compare_sel_0.data := r.rs_data
+                    }
+                    is(index_cp0_count){
+                        io.out_count_sel_0.en := canWrite()
+                        io.out_count_sel_0.data := r.rs_data
+                    }
+                    is(index_cp0_entrylo0){
+                        io.out_entrylo0_sel_0.en := canWrite() 
+                        io.out_entrylo0_sel_0.data := r.rs_data & "h_03ff_ffff".U
+                    }
+                    is(index_cp0_entrylo1){
+                        io.out_entrylo1_sel_0.en := canWrite() 
+                        io.out_entrylo1_sel_0.data := r.rs_data & "h_03ff_ffff".U
+                    }
+                    is(index_cp0_entryhi){
+                        io.out_entryhi_sel_0.en := canWrite() 
+                        io.out_entryhi_sel_0.data := r.rs_data & "h_ffffe0ff".U
+                    }
+                }
         }
     }
     when (io.flush || (!io.isu_pru.fire() && io.exec_wb.fire())) {

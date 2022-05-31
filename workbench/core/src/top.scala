@@ -139,6 +139,20 @@ class verilator_top extends Module {
     pru.io.cp0_compare := cp0.io.cp0_compare_0
     pru.io.cp0_count := cp0.io.cp0_count_0
 
+    cp0.io.inp_badAddr_sel_0 <> pru.io.out_badAddr_sel_0
+    cp0.io.inp_cause_sel_0 <> pru.io.out_cause_sel_0
+    cp0.io.inp_index_sel_0 := pru.io.out_index_sel_0
+    cp0.io.inp_random_sel_0 := DontCare // pru.io.out_random_sel_0 
+    cp0.io.inp_status_sel_0 := pru.io.out_status_sel_0
+    cp0.io.inp_epc_sel_0 := pru.io.out_epc_sel_0
+    cp0.io.inp_badAddr_sel_0 := pru.io.out_badAddr_sel_0
+    cp0.io.inp_context_sel_0 := pru.io.out_context_sel_0
+    cp0.io.inp_entryhi_sel_0 := pru.io.out_entryhi_sel_0
+    cp0.io.inp_entrylo0_sel_0 := pru.io.out_entrylo0_sel_0
+    cp0.io.inp_entrylo1_sel_0 := pru.io.out_entrylo1_sel_0
+    cp0.io.inp_cp0_count_0 := pru.io.out_count_sel_0
+    cp0.io.inp_cp0_compare_0 := pru.io.out_compare_sel_0
+
     tlb.io.in := pru.io.tlb_wr
 
     icache.io.cache_cmd := pru.io.icache_cmd

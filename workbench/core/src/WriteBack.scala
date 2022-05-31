@@ -115,8 +115,11 @@ class WriteBack extends Module{
     def mergeCause(a:UInt) = ((a & "b0000_0000_1100_0000_0000_0011_0000_0000".U ).asUInt | (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)).asTypeOf(new cp0_Cause_13)
     def getCauseValue1() = Mux(isCauseWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Cause_13), io.cp0_cause)
     def getStatusValue1() = Mux(isStatusWrite(), reg_pru_wb.mft.data.asTypeOf(new cp0_Status_12), io.cp0_status)
-    def getStatusValue() = mergeStatus(getStatusValue1().asUInt())
-    def getCauseValue() = mergeCause(getCauseValue1().asUInt())
+    //def getStatusValue() = mergeStatus(getStatusValue1().asUInt())
+    //def getCauseValue() = mergeCause(getCauseValue1().asUInt())
+    def getStatusValue() = io.cp0_status
+    def getCauseValue() = io.cp0_cause
+
     def canInterupt(idx:UInt) = !getStatusValue().ERL.asBool && !getStatusValue().EXL.asBool && getStatusValue().IE.asBool() &&  getStatusValue().IM(idx).asBool() && getCauseValue().IP(idx).asBool()
     def isSoftIntr0() = canInterupt(0.U)
     def isSoftIntr1() = canInterupt(1.U)
@@ -223,7 +226,7 @@ class WriteBack extends Module{
                 
                 when(isSlot){
                     io.out_epc_sel_0.data := exception.EPC - 4.U
-                    printf("@wb exception.epc %x epc %x\n", exception.EPC, io.out_epc_sel_0.data)
+                    //printf("@wb exception.epc %x epc %x\n", exception.EPC, io.out_epc_sel_0.data)
                     cause_cur.BD := 1.U
                 }.otherwise{
                     io.out_epc_sel_0.data := exception.EPC
@@ -260,7 +263,7 @@ class WriteBack extends Module{
             io.out_entryhi_sel_0.en := Y
             val entryhi = WireInit(io.cp0_entryhi)
             entryhi.vpn2 := exception.badVaddr >> 13
-            io.out_entryhi_sel_0.data := entryhi.asUInt
+            io.out_entryhi_sel_0.data := entryhi.asUInt & "h_ffffe0ff".U(conf.data_width.W)
             //entryhi.asid := excep
         }
 
@@ -282,7 +285,7 @@ class WriteBack extends Module{
         //io.out_epc_sel_0.en := Y
         //io.out_epc_sel_0.data := exception.EPC
     }.elsewhen(isEret()){//jump without delay(ERET)
-        printf("@wb eret\n")
+        printf("@wb eret %x\n", reg_pru_wb.current_pc)
         io.flush := Y
         io.wb_if.valid := Y
         isBranch := N
@@ -356,56 +359,57 @@ class WriteBack extends Module{
         io.commit.commit_pc := reg_pru_wb.current_pc
         io.commit.commit_instr := reg_pru_wb.current_instr
         io.commit.commit := Y
+        printf("pru wb %x\n", io.commit.commit_pc)
         when(reg_pru_wb.mft.en){
             when(reg_pru_wb.mft.destSel){//cp0
-                switch(reg_pru_wb.mft.destAddr){
-                    is(index_cp0_badvaddr){
-                        io.out_badAddr_sel_0.en := Y
-                        io.out_badAddr_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    is(index_cp0_cause){
-                        printf("@wb cp0_cause %x\n", reg_pru_wb.mft.data)
-                        io.out_cause_sel_0.en := Y
-                        io.out_cause_sel_0.data := mergeCause(reg_pru_wb.mft.data).asUInt//(reg_pru_wb.mft.data & "b0000_0000_1100_0000_0011_0000_0000".U )| (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)
-                    }
-                    is(index_cp0_epc){
-                        io.out_epc_sel_0.en := Y
-                        io.out_epc_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    is(index_cp0_status){
-                        printf(p"write to cp0 status ${reg_pru_wb.mft.data}")
-                        io.out_status_sel_0.en := Y
-                        io.out_status_sel_0.data := mergeStatus(reg_pru_wb.mft.data).asUInt()
-                    }
-                    is(index_cp0_index){
-                        io.out_index_sel_0.en := Y 
-                        io.out_index_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    is(index_cp0_compare){
-                        io.out_compare_sel_0.en := Y
-                        io.out_compare_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    is(index_cp0_count){
-                        io.out_count_sel_0.en := Y
-                        io.out_count_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    // is(index_cp0_random){
-                    //     io.out_random_sel_0.en := Y 
-                    //     io.out_random_sel_0.data := reg_pru_wb.mft.data
-                    // }
-                    is(index_cp0_entrylo0){
-                        io.out_entrylo0_sel_0.en := Y 
-                        io.out_entrylo0_sel_0.data := reg_pru_wb.mft.data
-                    }
-                    is(index_cp0_entrylo1){
-                        io.out_entrylo1_sel_0.en := Y 
-                        io.out_entrylo1_sel_0.data := reg_pru_wb.mft.data 
-                    }
-                    is(index_cp0_entryhi){
-                        io.out_entryhi_sel_0.en := Y 
-                        io.out_entryhi_sel_0.data := reg_pru_wb.mft.data
-                    }
-                }
+                // switch(reg_pru_wb.mft.destAddr){
+                //     is(index_cp0_badvaddr){
+                //         io.out_badAddr_sel_0.en := Y
+                //         io.out_badAddr_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     is(index_cp0_cause){
+                //         printf("@wb cp0_cause %x\n", reg_pru_wb.mft.data)
+                //         io.out_cause_sel_0.en := Y
+                //         io.out_cause_sel_0.data := mergeCause(reg_pru_wb.mft.data).asUInt//(reg_pru_wb.mft.data & "b0000_0000_1100_0000_0011_0000_0000".U )| (io.cp0_cause.asUInt() &"b1011_0000_0000_0000_1111_1100_0111_1100".U)
+                //     }
+                //     is(index_cp0_epc){
+                //         io.out_epc_sel_0.en := Y
+                //         io.out_epc_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     is(index_cp0_status){
+                //         printf(p"write to cp0 status ${reg_pru_wb.mft.data}")
+                //         io.out_status_sel_0.en := Y
+                //         io.out_status_sel_0.data := mergeStatus(reg_pru_wb.mft.data).asUInt()
+                //     }
+                //     is(index_cp0_index){
+                //         io.out_index_sel_0.en := Y 
+                //         io.out_index_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     is(index_cp0_compare){
+                //         io.out_compare_sel_0.en := Y
+                //         io.out_compare_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     is(index_cp0_count){
+                //         io.out_count_sel_0.en := Y
+                //         io.out_count_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     // is(index_cp0_random){
+                //     //     io.out_random_sel_0.en := Y 
+                //     //     io.out_random_sel_0.data := reg_pru_wb.mft.data
+                //     // }
+                //     is(index_cp0_entrylo0){
+                //         io.out_entrylo0_sel_0.en := Y 
+                //         io.out_entrylo0_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //     is(index_cp0_entrylo1){
+                //         io.out_entrylo1_sel_0.en := Y 
+                //         io.out_entrylo1_sel_0.data := reg_pru_wb.mft.data 
+                //     }
+                //     is(index_cp0_entryhi){
+                //         io.out_entryhi_sel_0.en := Y 
+                //         io.out_entryhi_sel_0.data := reg_pru_wb.mft.data
+                //     }
+                //}
             }.otherwise{//to general
                 io.gpr_wr.w_en := "b1111".U
                 io.gpr_wr.data := reg_pru_wb.mft.data
@@ -416,11 +420,11 @@ class WriteBack extends Module{
             io.out_index_sel_0.data := reg_pru_wb.tlbp.index_data 
         } .elsewhen(reg_pru_wb.tlbr.en){
             io.out_entryhi_sel_0.en := Y 
-            io.out_entryhi_sel_0.data := reg_pru_wb.tlbr.entryhi.asUInt
+            io.out_entryhi_sel_0.data := reg_pru_wb.tlbr.entryhi.asUInt & "h_ffffe0ff".U(conf.data_width.W)
             io.out_entrylo0_sel_0.en := Y 
-            io.out_entrylo0_sel_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt
+            io.out_entrylo0_sel_0.data := reg_pru_wb.tlbr.entrylo_0.asUInt  & "h_03ff_ffff".U(conf.data_width.W)
             io.out_entrylo1_sel_0.en := Y 
-            io.out_entrylo1_sel_0.data := reg_pru_wb.tlbr.entrylo_1.asUInt
+            io.out_entrylo1_sel_0.data := reg_pru_wb.tlbr.entrylo_1.asUInt  & "h_03ff_ffff".U(conf.data_width.W)
         }
     }
     }
