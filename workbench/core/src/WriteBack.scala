@@ -145,7 +145,7 @@ class WriteBack extends Module{
         current_pc := reg_bru_wb.current_pc
     }
     when(needJump){
-        current_pc:= reg_bru_wb.w_pc_addr
+        current_pc:= reg_bru_wb.w_pc_addr - 4.U
     }
     when(isException || isSoftIntr() || isIrq7()){//exception
         val cause_cur = WireInit(getCauseValue())
@@ -221,7 +221,7 @@ class WriteBack extends Module{
         when(io.cp0_status.EXL === 0.U){
                 io.out_epc_sel_0.en := Y
                 
-                when(isSlot){
+                when(isSlot && !isIrq7()){
                     io.out_epc_sel_0.data := exception.EPC - 4.U
                     printf("@wb exception.epc %x epc %x\n", exception.EPC, io.out_epc_sel_0.data)
                     cause_cur.BD := 1.U
