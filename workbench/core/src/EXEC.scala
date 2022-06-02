@@ -850,6 +850,8 @@ class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
         val exec_wb = Decoupled(new MDU_WB)
+        val multiplier = IO(new MultiplierIO)
+        val dividor = IO(new DividerIO)
         val flush = Input(Bool())
     })
     io.exec_wb.bits.error := DontCare
@@ -884,10 +886,10 @@ class MDU extends Module{
     val multiplier_delay_count = RegInit((conf.mul_stages).U(3.W))    // 7
     // printf(p"dividor ready: ${dividor_ready}\n")
     // printf(p"isu mud reg: ${isu_mdu_reg}\n")
-    dividor.io <> DontCare
-    dividor.io.data_dividend_valid := false.B
-    dividor.io.data_divisor_valid := false.B
-    multiplier.io <> DontCare
+    io.dividor <> DontCare
+    io.dividor.data_dividend_valid := false.B
+    io.dividor.data_divisor_valid := false.B
+    io.multiplier <> DontCare
     when(state===1.U & !io.flush){
         //printf("start working on ")
         // data_dividend_valid, data_divisor_valid, data_divident_bits, data_divisor_bits
@@ -895,13 +897,13 @@ class MDU extends Module{
         when(VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)){
             //printf("div\n")
             // div
-            dividor.io.data_dividend_valid := true.B
-            dividor.io.data_divisor_valid := true.B
-            dividor.io.data_dividend_bits := Cat(
+            io.dividor.data_dividend_valid := true.B
+            io.dividor.data_divisor_valid := true.B
+            io.dividor.data_dividend_bits := Cat(
                 Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rsData(31)), 0.U(8.W)),
                 isu_mdu_reg.rsData
             )
-            dividor.io.data_divisor_bits := Cat(
+            io.dividor.data_divisor_bits := Cat(
                 Mux(isu_mdu_reg.mdu_op===MDU_DIV_OP, Fill(8, isu_mdu_reg.rtData(31)), 0.U(8.W)),
                 isu_mdu_reg.rtData
             )
@@ -910,11 +912,11 @@ class MDU extends Module{
             //printf("mul\n")
             // mul
             multiplier_delay_count := (conf.mul_stages-1).U(3.W)
-            multiplier.io.data_a := Cat(
+            io.multiplier.data_a := Cat(
                 Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rsData(31)),
                 isu_mdu_reg.rsData
             )
-            multiplier.io.data_b := Cat(
+            io.multiplier.data_b := Cat(
                 Mux(VecInit(MDU_MULTU_OP, MDU_MADDU_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op), 0.U(1.W), isu_mdu_reg.rtData(31)),
                 isu_mdu_reg.rtData
             )
@@ -941,29 +943,29 @@ class MDU extends Module{
             mdu_wb_reg.w_en := Mux(isu_mdu_reg.mdu_op===MDU_MUL_OP, true.B, false.B)
             state := 4.U
             when(VecInit(MDU_MADD_OP, MDU_MADDU_OP).contains(isu_mdu_reg.mdu_op)){
-                val hi_lo = Cat(hi, lo) + multiplier.io.data_dout(63, 0)
+                val hi_lo = Cat(hi, lo) + io.multiplier.data_dout(63, 0)
                 hi := hi_lo(63, 32)
                 lo := hi_lo(31, 0)
             } .elsewhen(VecInit(MDU_MSUB_OP, MDU_MSUBU_OP).contains(isu_mdu_reg.mdu_op)){
-                val hi_lo = Cat(hi, lo) - multiplier.io.data_dout(63, 0)
+                val hi_lo = Cat(hi, lo) - io.multiplier.data_dout(63, 0)
                 hi := hi_lo(63, 32)
                 lo := hi_lo(31, 0)
             } .elsewhen(isu_mdu_reg.mdu_op===MDU_MUL_OP){
                 mdu_wb_reg.w_addr := isu_mdu_reg.rd
-                mdu_wb_reg.w_data := multiplier.io.data_dout(31, 0)
+                mdu_wb_reg.w_data := io.multiplier.data_dout(31, 0)
             }.otherwise{
-                hi := multiplier.io.data_dout(63, 32)
-                lo := multiplier.io.data_dout(31, 0)
+                hi := io.multiplier.data_dout(63, 32)
+                lo := io.multiplier.data_dout(31, 0)
             }
         }
     } .elsewhen(state===3.U){
         //printf("dividing!\n")
-        when(dividor.io.data_dout_valid){ //VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
+        when(io.dividor.data_dout_valid){ //VecInit(MDU_DIV_OP, MDU_DIVU_OP).contains(isu_mdu_reg.mdu_op)
             //printf("touch! dividor done 0\n")
             mdu_wb_reg.w_en := false.B 
             // mdu_wb_valid := true.B
-            lo := dividor.io.data_dout_bits(71, 40)
-            hi := dividor.io.data_dout_bits(31, 0) 
+            lo := io.dividor.data_dout_bits(71, 40)
+            hi := io.dividor.data_dout_bits(31, 0) 
             state := 4.U 
         }
     }
