@@ -13,7 +13,7 @@ class loongson_top extends Module {
     val io = IO(new Bundle {
         val imem = new AXI4IO(conf.xprlen)
         val dmem = new AXI4IO(conf.xprlen)
-        val divider = new DividerIO
+        val dividor = new DividerIO
         val multiplier = new MultiplierIO
         val commit = new CommitIO
     })
@@ -76,10 +76,10 @@ class loongson_top extends Module {
     // mem.io.in.resp.ready := dcache.io.out.resp.ready | icache.io.out.resp.ready
     // dcache.io.out.resp.bits <> mem.io.in.resp.bits 
     // icache.io.out.resp.bits <> mem.io.in.resp.bits
-    imem2axi.in <> icache.io.out 
-    dmem2axi.in <> dcache.io.out
-    io.imem <> imem2axi.out
-    io.dmem <> dmem2axi.out
+    imem2axi.io.in <> icache.io.out 
+    dmem2axi.io.in <> dcache.io.out
+    io.imem <> imem2axi.io.out
+    io.dmem <> dmem2axi.io.out
 
     val irq7 = RegNext(write_back.io.irq7)
     val commit = RegNext(write_back.io.commit)
@@ -196,8 +196,8 @@ class loongson_top extends Module {
     printf("@top ip7 %d\n", io.commit.ip7)
     io.commit.ip7 := irq7
 
-    mdu.io.divider <> io.divider
-    mdu.io.multiplier <> io.multiplier
+    io.dividor := mdu.io.dividor
+    io.multiplier := mdu.io.multiplier 
 }
 
 class zedboard_top extends loongson_top {

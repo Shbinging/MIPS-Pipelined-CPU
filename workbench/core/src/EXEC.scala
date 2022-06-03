@@ -855,8 +855,8 @@ class MDU extends Module{
         val flush = Input(Bool())
     })
     io.exec_wb.bits.error := DontCare
-    val multiplier = Module(new Multiplier)
-    val dividor = Module(new Divider)
+    // val multiplier = Module(new Multiplier)
+    // val dividor = Module(new Divider)
     
     // isu_mdu_fired 
     val state = RegInit(0.U)
