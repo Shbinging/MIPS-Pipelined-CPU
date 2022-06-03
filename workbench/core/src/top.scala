@@ -196,8 +196,8 @@ class loongson_top extends Module {
     printf("@top ip7 %d\n", io.commit.ip7)
     io.commit.ip7 := irq7
 
-    io.dividor := mdu.io.dividor
-    io.multiplier := mdu.io.multiplier 
+    io.dividor <> mdu.io.dividor
+    io.multiplier <> mdu.io.multiplier 
 }
 
 class zedboard_top extends loongson_top {

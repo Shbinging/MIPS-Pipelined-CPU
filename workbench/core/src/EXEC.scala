@@ -850,8 +850,8 @@ class MDU extends Module{
     val io = IO(new Bundle{
         val isu_mdu = Flipped(Decoupled(new ISU_MDU))
         val exec_wb = Decoupled(new MDU_WB)
-        val multiplier = IO(new MultiplierIO)
-        val dividor = IO(new DividerIO)
+        val multiplier = new MultiplierIO
+        val dividor = new DividerIO
         val flush = Input(Bool())
     })
     io.exec_wb.bits.error := DontCare
