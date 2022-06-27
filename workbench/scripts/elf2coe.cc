@@ -99,8 +99,8 @@ void as_load(
     if (ph->p_type != PT_LOAD) { continue; }
 
     char *ptr = as_map(space, ph->p_vaddr, ph->p_memsz);
-    Assert(ptr,
-        "elf file has sections out of specified range");
+    // Assert(ptr,
+    //    "elf file has sections out of specified range");
     memcpy(ptr, buf + ph->p_offset, ph->p_filesz);
     memset(
         ptr + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
