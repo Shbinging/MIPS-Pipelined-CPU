@@ -8,7 +8,7 @@ object conf {
   val addr_width = 32
   val data_width = 32
   val xprbyte = xprlen / 8
-  val start_addr = "hbfc00000".U
+  val start_addr = "hbfc00000".U(32.W)
   val axi_data_width = 32
   val axi_id_width = 3
   val memio_cycles = 2

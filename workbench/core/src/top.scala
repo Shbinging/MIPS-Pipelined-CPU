@@ -27,6 +27,7 @@ class loongson_top extends Module {
     val cp0 = Module(new CP0)
 
     val instr_fetch = Module(new InstrFetch)
+    
     val icache = Module(new L1Cache)
     
     val instr_decode = Module(new InstrDecode)
@@ -195,9 +196,11 @@ class loongson_top extends Module {
     io.commit.cp0_count := cp0.io.cp0_count_0
     printf("@top ip7 %d\n", io.commit.ip7)
     io.commit.ip7 := irq7
-
+    io.commit.w_pc := instr_fetch.io.pc_w
+    
     io.dividor <> mdu.io.dividor
     io.multiplier <> mdu.io.multiplier 
+    
 }
 
 class zedboard_top extends loongson_top {
@@ -237,6 +240,8 @@ class verilator_top extends Module {
     val i_tlb_translator = Module(new TLBTranslator)
     val d_tlb_translator = Module(new TLBTranslator)
     val pru_tlb_translator = Module(new TLBTranslator)
+
+
     i_tlb_translator.io.tlb <> tlb.io.entries
     i_tlb_translator.io.req <> instr_fetch.io.tlb_req
     instr_fetch.io.tlb_resp <> i_tlb_translator.io.resp
@@ -383,6 +388,8 @@ class verilator_top extends Module {
     io.commit.cp0_count := cp0.io.cp0_count_0
     printf("@top ip7 %d\n", io.commit.ip7)
     io.commit.ip7 := irq7
+
+    
 }
 
 

@@ -6,13 +6,15 @@ import njumips.consts._
 
 
 class InstrFetch extends Module{
-    val io = IO(new Bundle{
+    val io = IO(new Bundle{  
         val wb_if = Flipped(Decoupled(new RB_IF))
         val tlb_req = Flipped(new TLBTranslatorReq)
         val tlb_resp = Flipped(new TLBTranslatorResp)
         val icache = new CacheIO
         val flush = Input(Bool())
         val if_id = Decoupled(new IF_ID)
+
+        val pc_w = Output(UInt(32.W))
     })
     val timeClock = RegInit(1.U(32.W))
     timeClock := timeClock + 1.U
@@ -20,6 +22,8 @@ class InstrFetch extends Module{
     printf(p"time:${timeClock}\n")
 
     val pc_reg = RegInit(conf.start_addr)
+    io.pc_w := pc_reg
+
     val flush = RegInit(N)
     val if_id_instr_prepared = RegInit(false.B)
     io.wb_if.ready := true.B

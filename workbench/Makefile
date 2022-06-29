@@ -12,7 +12,7 @@ export U_BOOT_HOME      := $(PWD)/../u-boot
 export LINUX_HOME       := $(PWD)/../linux
 export NANOS_HOME       := $(PWD)/../nanos
 
-UNCORE     ?= verilator
+UNCORE     ?= zedboard
 UNCORE_DIR := uncore/$(UNCORE)
 VIVADO     := vivado -nolog -nojournal -notrace
 SBT        := sbt -mem 1000
