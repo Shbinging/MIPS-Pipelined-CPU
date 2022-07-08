@@ -58,10 +58,10 @@ class TLBTranslator extends Module{
     when(io.req.va >= "h_8000_0000".U && io.req.va < "h_c000_0000".U){ 
         // uncached
         when(io.req.va >= "h_a000_0000".U){
-            io.resp.pa := io.req.va - "h_a000_0000".U 
+            io.resp.pa := io.req.va - "h_a000_0000".U + "h_5000_0000".U
             io.resp.cached := false.B
         } .otherwise{
-            io.resp.pa := io.req.va - "h_8000_0000".U 
+            io.resp.pa := io.req.va - "h_8000_0000".U + "h_5000_0000".U
             io.resp.cached := true.B
         }
     } .otherwise{

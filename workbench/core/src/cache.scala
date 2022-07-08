@@ -149,8 +149,8 @@ class L1Cache extends Module{
             Cat(cache(index).data(line_count+3.U), cache(index).data(line_count+2.U)), 
             Cat(cache(index).data(line_count+1.U), cache(index).data(line_count+0.U))
         )
-        io.out.req.valid := true.B
-        io.out.resp.ready := true.B
+        io.out.req.valid := Mux(line_count===(conf.cache_line_size/8).U, false.B, true.B)
+        io.out.resp.ready := Mux(line_count===0.U, false.B, true.B)
         when(io.out.req.fire()){
             line_count := line_count + 4.U
         }
@@ -163,8 +163,8 @@ class L1Cache extends Module{
         io.out.req.bits.addr := (tag.asUInt()<<conf.cache_line_width) + line_count
         io.out.req.bits.len := 3.U 
         io.out.req.bits.strb := "b1111".U
-        io.out.req.valid := true.B
-        io.out.resp.ready := true.B
+        io.out.req.valid := Mux(line_count===(conf.cache_line_size/8).U, false.B, true.B)
+        io.out.resp.ready := Mux(line_count===0.U, false.B, true.B)
         when(io.out.req.fire()){
             line_count := line_count + 4.U
         }
@@ -188,16 +188,16 @@ class L1Cache extends Module{
         io.out.req.bits.strb := req_data.strb
         io.out.req.bits.data := req_data.data
         io.out.req.valid := true.B
-        io.out.resp.ready := true.B
-        when(io.out.resp.fire()){
+        when(io.out.req.fire()){
             state := 5.U
         }
+        // when(io.out.resp.fire()){
+        //     state := 5.U
+        // }
     } .elsewhen(state===5.U){
-        io.in.resp.valid := true.B
-        io.in.resp.bits.data := resp_data
-        io.in.resp.bits.exception := req_data.exception
-        when(io.in.resp.fire() && !io.in.req.fire()){
-            state := 0.U
+        io.out.resp.ready := true.B
+        when(io.out.resp.fire()){
+            state := 7.U
         }
     } .elsewhen(state===6.U){
         val idx = cache_cmd.addr(conf.L1_index_width+conf.cache_line_width-1, conf.cache_line_width)
@@ -219,6 +219,13 @@ class L1Cache extends Module{
             state := 0.U
             cache(idx).valid := false.B 
             cache_cmd.en := false.B
+        }
+    } .elsewhen(state===7.U){
+        io.in.resp.valid := true.B
+        io.in.resp.bits.data := resp_data
+        io.in.resp.bits.exception := req_data.exception
+        when(io.in.resp.fire() && !io.in.req.fire()){
+            state := 0.U
         }
     }
 }
